@@ -28,6 +28,6 @@ if (dst == EAX)
 
 else
 
-ZF = 0
+    ZF = 0
 
-EAX = dst
+    EAX = dst
