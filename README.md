@@ -13,3 +13,21 @@ Writing code in Assembly
 Compile assembly using gcc, run by calling ./a.out (or whatever the compiled file is named)
 
 https://apoltora0.wixsite.com/locks
+
+Useful commands:
+
+ts - test and set
+
+lock cmpxchg dst, src; cmpxchg - compare and exchange (atomic when used with lock prefix), lock prefix (makes operation atomic):
+
+if (dst == EAX)
+
+    ZF = 1
+
+    dst = src
+
+else
+
+ZF = 0
+
+EAX = dst
