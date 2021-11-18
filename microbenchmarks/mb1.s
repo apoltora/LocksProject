@@ -4,12 +4,11 @@
 #  x++;
 #  unlock();
 
+.global lock_atomic
+.type lock_atomic, %function
 
-.section .rodata             # read-only static data
-main:
-    movq    $0, %rdi         # store 0 inside of a register that will be manipulated
-    # want to create threads to run this function
-    lock # insert lock call here
-    addq    $1, %rdi         # increment the register by 1
-    # insert unlock call here
-    retq                     # return from the function
+.section .rodata                    # read-only static data
+
+lock_atomic:
+    lock addq       %rdi, $1     # increment the input by 1
+    retq                         # return from the function
