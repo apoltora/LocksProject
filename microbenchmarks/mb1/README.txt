@@ -18,3 +18,6 @@ Note: not all compilations will require an assembly file
 We will have compiled files have the naming convention "locktype", where locktype is the type of lock
 eg. atomic_lock, ticket_lock, mutex, etc.
 
+Some thoughts before we start:
+- mutex has overhead of initializing mutex (atomic does not)
+- mutex needs to unlock (atomic does not)
