@@ -2,7 +2,7 @@
  * This microbenchmark is a very simple add operation to a shared variable
  * Using mutex lock for this: pthread_mutex_init, pthread_mutex_lock, pthread_mutex_unlock
  * 
- * Authors: Alexandra Poltorak & Kiran Kumar Rajan Babu
+ * Authors: Alexandra Poltorak, Kiran Kumar Rajan Babu
  * Contact: apoltora@andrew.cmu.edu, krajanba@andrew.cmu.edu
  *
  */

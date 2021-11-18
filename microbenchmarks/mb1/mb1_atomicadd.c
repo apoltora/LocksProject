@@ -2,7 +2,7 @@
  * This microbenchmark is a very simple add operation to a shared variable
  * Using atomic lock for this, assembly instruction lock incl &x
  * 
- * Authors: Alexandra Poltorak & Kiran Kumar Rajan Babu
+ * Authors: Alexandra Poltorak, Kiran Kumar Rajan Babu
  * Contact: apoltora@andrew.cmu.edu, krajanba@andrew.cmu.edu
  *
  */
