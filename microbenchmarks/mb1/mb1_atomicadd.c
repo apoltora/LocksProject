@@ -1,6 +1,9 @@
 /**
- * This microbenchmark is a very simple addition to a shared variable
- * Alexandra Poltorak & Kiran Kumar Rajan Babu
+ * This microbenchmark is a very simple add operation to a shared variable
+ * Using atomic lock for this, assembly instruction lock incl &x
+ * 
+ * Authors: Alexandra Poltorak & Kiran Kumar Rajan Babu
+ * Contact: apoltora@andrew.cmu.edu, krajanba@andrew.cmu.edu
  *
  */
 
@@ -18,11 +21,9 @@ extern void lock_atomic(int *x);
 
 
 void *operation(void *vargp) {
-    int *x = (int*)vargp;
     // set start timer here
-    lock_atomic(x);                                                 // increments x by 1
+    lock_atomic((int*)vargp);                                                 // increments x by 1
     // set end timer here
-    *(int*)vargp = *x;
     return vargp;
 }
 
