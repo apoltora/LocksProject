@@ -16,25 +16,29 @@
 
 extern int lock_atomic(int x);
 
-struct {
-    
-} thread_t;
 
 void *operation(void *vargp) {
-    int x = (int)vargp;
+    int x = *(int *)vargp;
     lock_atomic(x);         // increments x by 1
-    return NULL;
+    return &x;
 }
 
 
 int main() {
     int x = 0;
-    pthread_t thread;
+    pthread_t threads[NUM_THREADS];
+    int result;
+    void *tmp_result;
 
     for (int i = 0; i < NUM_THREADS; i++) {
-        pthread_create(&thread, NULL, operation, (void*)&x);    // make the threads run the operation function
-        pthread_join(&thread, NULL);                            // waits for all threads to be finished before function returns
+        pthread_create(&threads[i], NULL, operation, (void*)&x);    // make the threads run the operation function
     }
-    return 0;
+    for (int i = 0; i < NUM_THREADS; i++) {
+        pthread_join(&threads[i], &tmp_result);                     // waits for all threads to be finished before function returns
+        int *part_result = (int*) tmp_result;
+        result += *part_result;
+    }
+
+    return result;
 }
 
