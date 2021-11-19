@@ -34,7 +34,6 @@ void *operation(void *vargp) {
     x++;
     pthread_mutex_unlock(&mutex);
     // place an end timer here
-    return vargp;
 }
 
 
@@ -51,8 +50,6 @@ int main() {
     for (j = 0; j < NUM_THREADS; j++) {
         pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
     }
-    // return *(int*)tmp_result;
-    printf("what is being returned %d\n",x);
     return x;
 }
 

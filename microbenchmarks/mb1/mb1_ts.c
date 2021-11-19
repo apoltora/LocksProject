@@ -28,7 +28,7 @@ extern void unlock(int lock_var);
 int LOCK;
 int x;
 
-void operation(void *vargp) {
+void *operation(void *vargp) {
     // place a start timer here
     lock(LOCK);
     // place an end timer here
@@ -51,7 +51,6 @@ int main() {
     for (j = 0; j < NUM_THREADS; j++) {
         pthread_join(threads[j], &tmp_result);                      // waits for all threads to be finished before function returns
     }
-    printf("what is the end result %d\n", NULL);
     return x;
 }
 

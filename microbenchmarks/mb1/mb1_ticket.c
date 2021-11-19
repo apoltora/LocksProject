@@ -30,6 +30,8 @@ typedef struct lock {
 extern void atomic_increment(int *x);
 lock_t l;
 
+int x;
+
 void Lock(lock_t *l) {
     atomic_increment(&l->next_ticket);
     int my_ticket = l->next_ticket;
@@ -50,7 +52,7 @@ void *operation(void *vargp) {
     // x++;
     // *(int*)vargp = x;
 
-    *(int*)vargp++;
+    x++;
     unlock(&l);
     // place an end timer here
     return vargp;
@@ -58,7 +60,7 @@ void *operation(void *vargp) {
 
 
 int main() {
-    int x = 0;
+    x = 0;
     pthread_t threads[NUM_THREADS];
     void *tmp_result;
     int i, j;
@@ -66,11 +68,11 @@ int main() {
     l.now_serving = 1;
 
     for (i = 0; i < NUM_THREADS; i++) {
-        pthread_create(&threads[i], NULL, operation, (void*)&x);    // make the threads run the operation function
+        pthread_create(&threads[i], NULL, operation, NULL);    // make the threads run the operation function
     }
     for (j = 0; j < NUM_THREADS; j++) {
-        pthread_join(threads[j], &tmp_result);                      // waits for all threads to be finished before function returns
+        pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
     }
-    return *(int*)tmp_result;
+    return x;
 }
 
