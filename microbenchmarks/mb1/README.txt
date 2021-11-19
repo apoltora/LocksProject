@@ -2,7 +2,9 @@ This folder is dedicated to testing locks with microbenchmark 1
 Microbenchmark 1 consists of a simple operation with multiple pthreads running (see below)
 
 lock();
+load x
 x++;
+store x
 unlock();
 
 This differs from how the atomic lock works as that is done with the assembly instruction:

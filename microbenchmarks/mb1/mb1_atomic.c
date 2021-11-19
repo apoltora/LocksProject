@@ -1,11 +1,11 @@
 /**
  * This microbenchmark is a very simple add operation to a shared variable
- * Using mutex lock for this: pthread_mutex_init, pthread_mutex_lock, pthread_mutex_unlock
+ * Using atomic lock for this, assembly instruction lock incl &x
  * 
  * Use this command to compile:
- * gcc -o mutex -lpthread mb1_mutex.c
+ * gcc -o atomic -lpthread mb1_atomic.c mb1_atomic.s
  * Then to run:
- * ./mutex
+ * ./atomic
  * 
  * Authors: Alexandra Poltorak, Kiran Kumar Rajan Babu
  * Contact: apoltora@andrew.cmu.edu, krajanba@andrew.cmu.edu
@@ -22,28 +22,22 @@
 
 #define NUM_THREADS 8
 
-extern void lock_atomic(int *x);
+extern void atomic_increment(int *x);
 int x;
 
-pthread_mutex_t mutex;
-
 void *operation(void *vargp) {
-    // place a start timer here
-    pthread_mutex_lock(&mutex);
-    // place an end timer here
-    x++;
-    pthread_mutex_unlock(&mutex);
-    // place an end timer here
+    // set start timer here
+    atomic_increment(&x);                                                 // increments x by 1
+    // set end timer here
     return vargp;
 }
 
 
-int main() {
+int main(int argc, char **argv) {
     x = 0;
     pthread_t threads[NUM_THREADS];
-    void *tmp_result;
+    int input;
     int i, j;
-    pthread_mutex_init(&mutex, NULL);
 
     for (i = 0; i < NUM_THREADS; i++) {
         pthread_create(&threads[i], NULL, operation, NULL);    // make the threads run the operation function
@@ -51,8 +45,6 @@ int main() {
     for (j = 0; j < NUM_THREADS; j++) {
         pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
     }
-    // return *(int*)tmp_result;
-    printf("what is being returned %d\n",x);
     return x;
 }
 

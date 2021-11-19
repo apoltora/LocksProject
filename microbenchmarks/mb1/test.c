@@ -1,6 +1,5 @@
 /**
- * This microbenchmark is a very simple add operation to a shared variable
- * Using atomic lock for this, assembly instruction lock incl &x
+ * Faulty code, as there are no locks
  * 
  * Authors: Alexandra Poltorak, Kiran Kumar Rajan Babu
  * Contact: apoltora@andrew.cmu.edu, krajanba@andrew.cmu.edu
@@ -17,13 +16,13 @@
 
 #define NUM_THREADS 8
 
-extern void lock_atomic(int *x);
-
-
 void *operation(void *vargp) {
-    // set start timer here
-    lock_atomic((int*)vargp);                                                 // increments x by 1
-    // set end timer here
+    // place a start timer here
+    // place an end timer here
+    int x = *(int*)vargp;
+    x++;
+    *(int*)vargp = x;
+    // place an end timer here
     return vargp;
 }
 
@@ -40,6 +39,7 @@ int main() {
     for (j = 0; j < NUM_THREADS; j++) {
         pthread_join(threads[j], &tmp_result);                      // waits for all threads to be finished before function returns
     }
+    printf("what is the end result %d\n",*(int*)tmp_result);
     return *(int*)tmp_result;
 }
 
