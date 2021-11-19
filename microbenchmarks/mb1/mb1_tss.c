@@ -25,12 +25,12 @@
 int lock;
 int x;
 
-extern int test_and_set(int *L);
+extern int test_and_set(int L);
 
 void Lock(int* l) {
     while (1) {
         while (*l != 0);
-        if (test_and_set(l) == 0) // need to complete writing the test_and_set in assembly (it requires ARM)
+        if (test_and_set(*l) == 0) // need to complete writing the test_and_set in assembly (it requires ARM)
             return;
     }
 }
@@ -60,6 +60,7 @@ int main() {
     for (j = 0; j < NUM_THREADS; j++) {
         pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
     }
+    printf("what does x return ?? %d\n", x);
     return x;
 }
 

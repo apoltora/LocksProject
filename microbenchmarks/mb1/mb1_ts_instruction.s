@@ -9,5 +9,6 @@
 #     ts R0, mem[addr]
 
 test_and_set:
-    bts %rax, (%rdi)
+    bts         %rax, %rdi
+    retq
 
