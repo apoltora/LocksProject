@@ -47,11 +47,6 @@ void *operation(void *vargp) {
     // place a start timer here
     Lock(&l);
     // place an end timer here
-
-    // int x = *(int*)vargp;
-    // x++;
-    // *(int*)vargp = x;
-
     x++;
     unlock(&l);
     // place an end timer here

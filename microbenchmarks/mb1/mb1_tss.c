@@ -25,10 +25,12 @@
 int lock;
 int x;
 
-void Lock(int* lock) {
+extern int test_and_set(int *L);
+
+void Lock(int* l) {
     while (1) {
-        while (*lock != 0);
-        if (test_and_set(*lock) == 0) // need to complete writing the test_and_set in assembly (it requires ARM)
+        while (*l != 0);
+        if (test_and_set(l) == 0) // need to complete writing the test_and_set in assembly (it requires ARM)
             return;
     }
 }
@@ -40,11 +42,6 @@ void *operation(void *vargp) {
     // place a start timer here
     Lock(&lock);
     // place an end timer here
-
-    // int x = *(int*)vargp;
-    // x++;
-    // *(int*)vargp = x;
-
     x++;
     Unlock(&lock);
     // place an end timer here
