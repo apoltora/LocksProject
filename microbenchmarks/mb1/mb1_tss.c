@@ -60,7 +60,6 @@ int main() {
     for (j = 0; j < NUM_THREADS; j++) {
         pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
     }
-    printf("what does x return ?? %d\n", x);
     return x;
 }
 
