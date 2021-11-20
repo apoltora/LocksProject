@@ -24,7 +24,7 @@
 #include <stdlib.h>
 
 
-#define NUM_THREADS 128
+#define NUM_THREADS 8
 #define ARRAY_SIZE 10
 
 extern void lock_atomic(volatile int *x);
@@ -59,8 +59,9 @@ void *operation(void *vargp) {
     pthread_mutex_lock(&mutex);
     // place an end timer here
     int i;
-    for (i = 0; i < ARRAY_SIZE; i++)
+    for (i = 0; i < ARRAY_SIZE; i++) {
         x[i] = thread_id;
+    }
     
     
     pthread_mutex_unlock(&mutex);
@@ -69,7 +70,7 @@ void *operation(void *vargp) {
 
 void print_final_array(volatile int *array) {
     int i;
-    for (i = 0; i < NUM_THREADS; i++) {
+    for (i = 0; i < ARRAY_SIZE; i++) {
         printf("Array index: %d, Thread id %d\n",i, array[i]);
     }
 }
@@ -87,7 +88,7 @@ int main() {
     for (j = 0; j < NUM_THREADS; j++) {
         pthread_join(threads[j].thread, NULL);                      // waits for all threads to be finished before function returns
     }
-    print_final_array(x);
+    // print_final_array(x); for debugging correctness of code
     return 0;
 }
 
