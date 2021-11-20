@@ -22,8 +22,8 @@
 
 #define NUM_THREADS 8
 
-extern void lock_atomic(int *x);
-int x;
+extern void lock_atomic(volatile int *x);
+volatile int x;
 
 pthread_mutex_t mutex;
 

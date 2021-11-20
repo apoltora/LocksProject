@@ -20,20 +20,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define NUM_THREADS 8
+#define NUM_THREADS 128
 
-extern void lock(int lock_var);
-extern void unlock(int lock_var);
+extern void lock(volatile int *lock_var);
+extern void unlock(volatile int *lock_var);
 
-int LOCK;
-int x;
+volatile int LOCK;
+volatile int x;
 
 void *operation(void *vargp) {
     // place a start timer here
-    lock(LOCK);
+    lock(&LOCK);
     // place an end timer here
     x++;
-    unlock(LOCK);
+    unlock(&LOCK);
     // place an end timer here
 }
 
@@ -51,6 +51,7 @@ int main() {
     for (j = 0; j < NUM_THREADS; j++) {
         pthread_join(threads[j], &tmp_result);                      // waits for all threads to be finished before function returns
     }
+    printf("what is x?? %d\n",x);
     return x;
 }
 

@@ -22,7 +22,7 @@
 
 #define NUM_THREADS 8
 
-extern void atomic_increment(int *x);
+extern void atomic_increment(volatile int *x);
 int x;
 
 void *operation(void *vargp) {

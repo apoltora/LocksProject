@@ -3,13 +3,19 @@
 # 
 #
 
-.global lock, 
+.global lock, unlock
 .type lock, %function
 .type unlock, %function
 
 lock:
-    ts   R0, mem[addr]
-    bnz  R0, lock
+    bts   %rax, %rdi
+    test  %rax, %rax
+    je   lock
+    retq
+    # bnz  %rax, lock
 
 unlock:
-    st   mem[addr], #0
+    movq   $0, %rdi
+    retq
+    # st   mem[addr], #0
+

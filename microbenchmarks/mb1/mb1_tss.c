@@ -20,22 +20,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define NUM_THREADS 8
+#define NUM_THREADS 128
 
-int lock;
-int x;
+volatile int lock;
+volatile int x;
 
-extern int test_and_set(int L);
+extern volatile int test_and_set(volatile int L);
 
-void Lock(int* l) {
+void Lock(volatile int* l) {
     while (1) {
         while (*l != 0);
         if (test_and_set(*l) == 0) // need to complete writing the test_and_set in assembly (it requires ARM)
             return;
     }
 }
-void Unlock(int* lock) { 
-    *lock = 0;
+void Unlock(volatile int* l) { 
+    *l = 0;
 }
 
 void *operation(void *vargp) {
@@ -51,7 +51,6 @@ void *operation(void *vargp) {
 int main() {
     x = 0;
     pthread_t threads[NUM_THREADS];
-    void *tmp_result;
     int i, j;
     lock = 0;
     for (i = 0; i < NUM_THREADS; i++) {
