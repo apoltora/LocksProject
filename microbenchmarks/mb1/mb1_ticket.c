@@ -28,17 +28,17 @@ typedef struct lock {
 } lock_t;
 
 extern void atomic_increment(int *x);
-lock_t l;
+volatile lock_t l;
 
 int x;
 
-void Lock(lock_t *l) {
+void Lock(volatile lock_t *l) {
     atomic_increment(&l->next_ticket);
     int my_ticket = l->next_ticket;
     while (my_ticket != l->now_serving);
 }
 
-void unlock(lock_t *l) {
+void unlock(volatile lock_t *l) {
     l->now_serving++;
 }
 
