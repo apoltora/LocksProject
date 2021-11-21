@@ -3,7 +3,7 @@
  * Creating array lock
  * 
  * Use this command to compile:
- * gcc -o array -lpthread mb1_mb1_array.c
+ * gcc -o array -lpthread mb1_array.c
  * Then to run:
  * ./array
  * 
@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define NUM_THREADS 128
+#define NUM_THREADS 8
 //typically 64 bytes....but we have to check with the machine in which we run it
 #define CACHE_LINE_SIZE 64 
 
@@ -36,38 +36,56 @@ typedef struct {
     volatile int head;
 } lock_t;
 
-lock_t lock;
+lock_t lock_var;
 
 volatile int x;
 
-//int my_element;
+pthread_mutex_t mutex;
 
-int Lock(lock_t* l) {
-    // assume circular increment;
-    // TODO: create this function!!!!
+int atomic_circ_increment(volatile int* lock_head)
+{
+    int ret_val= *lock_head;
+
+    *lock_head = ((*lock_head + 1) % NUM_THREADS);
+
+    return ret_val;    
+}
+
+
+int lock(lock_t* l) {
+
+    // ? is it fine to use mutex to implement atomic_circ_increment ?
+    pthread_mutex_lock(&mutex);
     int my_element = atomic_circ_increment(&l->head);
+    pthread_mutex_unlock(&mutex);
 
     while ((l->status[my_element].y) == 1);
 
     return my_element;
 }
 
-void Unlock(lock_t* l, int element_number) {
+void unlock(lock_t* l, int element_number) {
     (l->status[element_number].y) = 1;
     (l->status[((element_number+1) % NUM_THREADS)].y) = 0;       
 }
 
 void *operation(void *vargp) {
     // place a start timer here
-    int element_number = Lock(&lock);
+    int element_number = lock(&lock_var);
     // place an end timer here
 
     // place a start timer here
+
     x++;
+    /* delay added here to spend some time in critical section so that we observe effects of backoff */
+    int delay = 100000;
+    while(delay)
+        delay--;
+
     // place an end timer here
 
     // place a start timer here
-    Unlock(&lock, element_number);
+    unlock(&lock_var, element_number);
     // place an end timer here
 }
 
@@ -76,14 +94,16 @@ int main() {
     x = 0;
     pthread_t threads[NUM_THREADS];
     int i, j, k;
-    lock.head = 0;     // the start of the array
+    lock_var.head = 0;     // the start of the array
 
     for (k = 0; k < NUM_THREADS; k++) {
-        lock.status[k].y = 1;
+        lock_var.status[k].y = 1;
     }
 
     // only the head element made as 0... acquires lock initially
-    lock.status[lock.head].y = 0;
+    lock_var.status[lock_var.head].y = 0;
+
+    pthread_mutex_init(&mutex, NULL);
 
     for (i = 0; i < NUM_THREADS; i++) {
         pthread_create(&threads[i], NULL, operation, NULL);    // make the threads run the operation function
