@@ -33,6 +33,10 @@ void *operation(void *vargp) {
     Lock(&LOCK);
     // place an end timer here
     x++;
+    /* delay added here to spend some time in critical section*/
+    int delay = 100000;
+    while(delay)
+        delay--;
     Unlock(&LOCK);
     // place an end timer here
 }
@@ -41,17 +45,15 @@ int main() {
     LOCK = 0;
     x = 0;
     pthread_t threads[NUM_THREADS];
-    void *tmp_result;
     int i, j;
-    printf("what is x?? %d\n",x);
 
     for (i = 0; i < NUM_THREADS; i++) {
         pthread_create(&threads[i], NULL, operation, NULL);    // make the threads run the operation function
     }
     for (j = 0; j < NUM_THREADS; j++) {
-        pthread_join(threads[j], &tmp_result);                      // waits for all threads to be finished before function returns
+        pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
     }
-    printf("what is x?? %d\n",x);
-    return x;
+    printf("value of x : %d\n",x);
+    return 0;
 }
 
