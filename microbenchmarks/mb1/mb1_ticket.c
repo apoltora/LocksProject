@@ -27,10 +27,10 @@ typedef struct lock {
     int now_serving;
 } lock_t;
 
-extern void atomic_increment(int *x);
+extern void atomic_increment(volatile int *x);
 volatile lock_t l;
 
-int x;
+volatile int x;
 
 void Lock(volatile lock_t *l) {
     atomic_increment(&l->next_ticket);
@@ -57,7 +57,6 @@ void *operation(void *vargp) {
 int main() {
     x = 0;
     pthread_t threads[NUM_THREADS];
-    void *tmp_result;
     int i, j;
     l.next_ticket = 0;
     l.now_serving = 1;

@@ -37,7 +37,6 @@ void *operation(void *vargp) {
     // place an end timer here
 }
 
-
 int main() {
     LOCK = 0;
     x = 0;
