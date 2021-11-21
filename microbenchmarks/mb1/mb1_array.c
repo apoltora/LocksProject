@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define NUM_THREADS 8
+#define NUM_THREADS 10
 //typically 64 bytes....but we have to check with the machine in which we run it
 #define CACHE_LINE_SIZE 64 
 
@@ -40,24 +40,25 @@ lock_t lock_var;
 
 volatile int x;
 
-pthread_mutex_t mutex;
+//pthread_mutex_t mutex;
 
-int atomic_circ_increment(volatile int* lock_head)
+/*int atomic_circ_increment(volatile int* lock_head)
 {
     int ret_val= *lock_head;
 
     *lock_head = ((*lock_head + 1) % NUM_THREADS);
 
     return ret_val;    
-}
+}*/
 
 
 int lock(lock_t* l) {
 
     // ? is it fine to use mutex to implement atomic_circ_increment ?
-    pthread_mutex_lock(&mutex);
-    int my_element = atomic_circ_increment(&l->head);
-    pthread_mutex_unlock(&mutex);
+    //pthread_mutex_lock(&mutex);
+    int num_t = (NUM_THREADS - 1);
+    int my_element = atomic_circ_increment(&l->head, num_t);
+    //pthread_mutex_unlock(&mutex);
 
     while ((l->status[my_element].y) == 1);
 
@@ -103,7 +104,7 @@ int main() {
     // only the head element made as 0... acquires lock initially
     lock_var.status[lock_var.head].y = 0;
 
-    pthread_mutex_init(&mutex, NULL);
+    // pthread_mutex_init(&mutex, NULL);
 
     for (i = 0; i < NUM_THREADS; i++) {
         pthread_create(&threads[i], NULL, operation, NULL);    // make the threads run the operation function
