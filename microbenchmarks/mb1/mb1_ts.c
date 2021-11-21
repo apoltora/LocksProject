@@ -20,20 +20,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define NUM_THREADS 128
+#define NUM_THREADS 8
 
-extern void lock(volatile int *lock_var);
-extern void unlock(volatile int *lock_var);
+extern void Lock(volatile int *lock_var);
+extern void Unlock(volatile int *lock_var);
 
 volatile int LOCK;
 volatile int x;
 
 void *operation(void *vargp) {
     // place a start timer here
-    lock(&LOCK);
+    Lock(&LOCK);
     // place an end timer here
     x++;
-    unlock(&LOCK);
+    Unlock(&LOCK);
     // place an end timer here
 }
 
@@ -43,6 +43,7 @@ int main() {
     pthread_t threads[NUM_THREADS];
     void *tmp_result;
     int i, j;
+    printf("what is x?? %d\n",x);
 
     for (i = 0; i < NUM_THREADS; i++) {
         pthread_create(&threads[i], NULL, operation, NULL);    // make the threads run the operation function
