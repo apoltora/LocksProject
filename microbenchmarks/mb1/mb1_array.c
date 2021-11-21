@@ -21,38 +21,53 @@
 #include <stdlib.h>
 
 #define NUM_THREADS 128
-#define LOCKS 4                 // arbitrarily set
-#define PADDING 8               // arbitrarily set!! make sure padding is correct so each int is in a different cache
+//typically 64 bytes....but we have to check with the machine in which we run it
+#define CACHE_LINE_SIZE 64 
 
-volatile int x;
-
+typedef struct {
+    // padded bytes here so that each int is in a different cache
+    volatile int y;
+    volatile char dummy[CACHE_LINE_SIZE - sizeof(int)]; //padding
+} padded_int;
 
 
 typedef struct {
-    // volatile padded_int status[P];              // padded to keep off same cache line, how should we do this????
-    volatile status[LOCKS+PADDING];
+    padded_int status[NUM_THREADS];
     volatile int head;
 } lock_t;
 
-volatile lock_t lock;
+lock_t lock;
 
+volatile int x;
 
-int my_element;
-void Lock(lock_t* l) {
-  my_element = atomic_circ_increment(&l->head); // assume circular increment; TODO: create this function!!!!
-  while (l->status[my_element] == 1);
+//int my_element;
+
+int Lock(lock_t* l) {
+    // assume circular increment;
+    // TODO: create this function!!!!
+    int my_element = atomic_circ_increment(&l->head);
+
+    while ((l->status[my_element].y) == 1);
+
+    return my_element;
 }
-void Unlock(lock_t* l) {
-    l->status[my_element] = 1;
-    l->status[circ_next(my_element)] = 0;       // next() gives next index
+
+void Unlock(lock_t* l, int element_number) {
+    (l->status[element_number].y) = 1;
+    (l->status[((element_number+1) % NUM_THREADS)].y) = 0;       
 }
 
 void *operation(void *vargp) {
     // place a start timer here
-    Lock(&lock);
+    int element_number = Lock(&lock);
     // place an end timer here
+
+    // place a start timer here
     x++;
-    Unlock(&lock);
+    // place an end timer here
+
+    // place a start timer here
+    Unlock(&lock, element_number);
     // place an end timer here
 }
 
@@ -60,15 +75,25 @@ void *operation(void *vargp) {
 int main() {
     x = 0;
     pthread_t threads[NUM_THREADS];
-    int i, j;
-    // lock = 0;
-    lock.head = 0;      // the start of the array
+    int i, j, k;
+    lock.head = 0;     // the start of the array
+
+    for (k = 0; k < NUM_THREADS; k++) {
+        lock.status[k].y = 1;
+    }
+
+    // only the head element made as 0... acquires lock initially
+    lock.status[lock.head].y = 0;
+
     for (i = 0; i < NUM_THREADS; i++) {
         pthread_create(&threads[i], NULL, operation, NULL);    // make the threads run the operation function
     }
+
     for (j = 0; j < NUM_THREADS; j++) {
         pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
     }
-    return x;
+
+    printf("The value of x is : %d\n", x);
+    return 0;
 }
 
