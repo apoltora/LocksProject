@@ -3,7 +3,7 @@
  * Creating queue lock
  * 
  * Use this command to compile:
- * gcc -o queue -lpthread mb1_queue.c mb1_queue.s
+ * clang -std=c11 -lpthread -o queue mb1_queue.c
  * Then to run:
  * ./queue
  * 
@@ -20,8 +20,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdatomic.h>
 
-#define NUM_THREADS 29
+#define NUM_THREADS 8
 #define CACHE_LINE_SIZE 64 
 
 typedef enum { LOCKED, UNLOCKED } qlock_state;
@@ -34,10 +35,7 @@ typedef struct qlock {
 
 } qlock_t;
 
-
-qlock_t* volatile glock;
-
-extern void* at_cmp_swap(void* param1, void* param2, void* param3);
+qlock_t* volatile _Atomic glock;
 
 int x;
 
@@ -51,19 +49,14 @@ qlock_t *AcquireQLock() {
 
     qlock_t *prev_glock;
     qlock_t *prev_glock_temp;
+    unsigned long long temp;
 
     while(1)
     {
         prev_glock = glock;
 
-       // printf("prev_glock: %0x \n", prev_glock);
-
-        prev_glock_temp = (qlock_t *) at_cmp_swap((void *) &glock, (void *) prev_glock, (void *) mlock);
-
-      //  printf("prev_glock_temp: %0x \n", prev_glock_temp);
-
-        if(prev_glock == prev_glock_temp)
-            break;  
+        if(atomic_compare_exchange_weak(&glock, &prev_glock, mlock))
+            break;
 
     }
 
@@ -75,6 +68,7 @@ qlock_t *AcquireQLock() {
 
     mlock->state = LOCKED;
     prev_glock->next = mlock;
+    printf("I am here\n");
 
     while (mlock->state == LOCKED); // SPIN HERE...
 
@@ -89,15 +83,14 @@ void ReleaseQLock(qlock_t *mlock) {
         if (mlock->next == NULL) {
             
             qlock_t *prev_glock_temp;
+            long temp;
 
-            // ptr, expected old value, new value to be inserted
-            prev_glock_temp =  (qlock_t *) at_cmp_swap((void *) &glock, (void *) mlock, NULL);
+            qlock_t *mlock_temp = mlock;
 
-
-            if(mlock == prev_glock_temp)
+            if(atomic_compare_exchange_weak(&glock, &mlock_temp, NULL))
             {
                 free(mlock);
-                return; 
+                return;
             }
 
         }
@@ -118,6 +111,10 @@ void *operation(void *vargp) {
 
     // place an end timer here
     x++;
+
+   // long delay = 1000000000;
+    //while(delay)
+      //  delay--;
 
     ReleaseQLock(mylock);
 
