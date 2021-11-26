@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#define NUM_THREADS 8
+#define NUM_THREADS 29
 #define CACHE_LINE_SIZE 64 
 
 typedef enum { LOCKED, UNLOCKED } qlock_state;
@@ -60,73 +60,25 @@ qlock_t *AcquireQLock() {
     {
         prev_glock = glock;
 
-       // unsigned long long param1, param2, param3;
-
-       // param1 = (unsigned long long) &glock;
-
-        //param2 = (unsigned long long) prev_glock;
-
-        //param3 = (unsigned long long) mlock;
-
-        //temp = at_cmp_swap((void *)&glock, (void *)prev_glock, (void *)mlock);
-
-      //  printf("mlock: %p\n", mlock);
-
-       // printf("prev_glock: %p\n", prev_glock);
-
-       // printf("param3: %0x \n", param3);
-
-        printf("prev_glock: %0x \n", prev_glock);
+       // printf("prev_glock: %0x \n", prev_glock);
 
         prev_glock_temp = (qlock_t *) at_cmp_swap((void *) &glock, (void *) prev_glock, (void *) mlock);
 
-        printf("prev_glock_temp: %0x \n", prev_glock_temp);
+      //  printf("prev_glock_temp: %0x \n", prev_glock_temp);
 
-        
-
-        //assert(0);
-
-      //  temp = ((temp << 16) >> 16);
-                //temp = at_cmp_swap(glock, prev_glock, mlock);
-      //  prev_glock_temp = (qlock_t *) temp;
-
-     //   printf("temp: %0x \n", temp);
-
-       // printf("prev_glock_temp: %p \n", prev_glock_temp);
-
-       // printf("prev_glock: %p\n", prev_glock);
-
-        
-       
-
-       // printf("sizeof prev_glock_temp: %d\n", sizeof(prev_glock_temp));
-
-        //printf("sizeof prev_glock: %d\n", sizeof(prev_glock));
-
-
-        // ptr, expected old value, new value to be inserted
-       // bool result = __atomic_compare_exchange_n (glock, prev_glock, mlock, false);
-
-        //TODO: this if is not happening...solve it
         if(prev_glock == prev_glock_temp)
             break;  
 
-        // printf("I am here 2\n");
-
     }
-
-   // prev_glock = (void *) xchg_64((void *)mlock, (void *)glock);
 
     // no thread in the queue lock yet.
     if (prev_glock == NULL)
     {
-       // printf("I am here....1\n");
         return mlock;
     }
 
     mlock->state = LOCKED;
     prev_glock->next = mlock;
-    printf("I am here\n\n\n");
 
     while (mlock->state == LOCKED); // SPIN HERE...
 
@@ -141,17 +93,9 @@ void ReleaseQLock(qlock_t *mlock) {
         if (mlock->next == NULL) {
             
             qlock_t *prev_glock_temp;
-            //void * temp;
 
             // ptr, expected old value, new value to be inserted
-        prev_glock_temp =  (qlock_t *) at_cmp_swap((void *) &glock, (void *) mlock, NULL);
-
-            //prev_glock_temp = (qlock_t *) temp;
-
-
-            //printf("prev_glock_temp: %p \n", prev_glock_temp);
-
-           // printf("mlock: %p\n", mlock);
+            prev_glock_temp =  (qlock_t *) at_cmp_swap((void *) &glock, (void *) mlock, NULL);
 
 
             if(mlock == prev_glock_temp)
@@ -179,11 +123,8 @@ void *operation(void *vargp) {
     // place an end timer here
     x++;
 
-    //printf("I am here \n");
-    
     ReleaseQLock(mylock);
 
-  //  free(mylock);
     // place an end timer here
     return vargp;
 }
@@ -192,7 +133,7 @@ void *operation(void *vargp) {
 int main() {
     x = 0;
 
-    ///initialize glock
+    // initialize glock
     glock = NULL;
 
     pthread_t threads[NUM_THREADS];
@@ -205,15 +146,6 @@ int main() {
     for (j = 0; j < NUM_THREADS; j++) {
         pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
     }
-
-
-    // free the linkedlist
-    /*while(glock != NULL)
-    {
-        qlock_t *lock = glock;
-        glock = glock->next;
-        free(lock);
-    }*/
 
     printf("The value of x is : %d\n", x);
     return 0;
