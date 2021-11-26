@@ -21,6 +21,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include <stdatomic.h>
+
+
 #define NUM_THREADS 8
 #define CACHE_LINE_SIZE 64 
 
@@ -35,9 +38,10 @@ typedef struct qlock {
 } qlock_t;
 
 
-qlock_t* volatile glock;
+ qlock_t* volatile _Atomic glock;
 
 int x;
+
 
 qlock_t *AcquireQLock() {
 
@@ -58,31 +62,24 @@ qlock_t *AcquireQLock() {
     {
         prev_glock = glock;
 
-        unsigned long long param1, param2, param3;
+        /*unsigned long long param1, param2, param3;
 
         param1 = (unsigned long long) &glock;
 
         param2 = (unsigned long long) prev_glock;
 
-        param3 = (unsigned long long) mlock;
+        param3 = (unsigned long long) mlock;*/
 
         //temp = at_cmp_swap((void *)&glock, (void *)prev_glock, (void *)mlock);
 
-        printf("mlock: %p\n", mlock);
+        if(atomic_compare_exchange_weak(&glock, &prev_glock, mlock))
+            break;
 
-        printf("prev_glock: %p\n", prev_glock);
+   
+       // temp = at_cmp_swap(param1, param2, param3);
 
-        printf("param3: %0x \n", param3);
-
-        temp = at_cmp_swap(param1, param2, param3);
-
-        printf("temp: %0x \n", temp);
-
-        assert(0);
-
-        temp = ((temp << 16) >> 16);
                 //temp = at_cmp_swap(glock, prev_glock, mlock);
-        prev_glock_temp = (qlock_t *) temp;
+       // prev_glock_temp = (qlock_t *) temp;
 
      //   printf("temp: %0x \n", temp);
 
@@ -102,8 +99,8 @@ qlock_t *AcquireQLock() {
        // bool result = __atomic_compare_exchange_n (glock, prev_glock, mlock, false);
 
         //TODO: this if is not happening...solve it
-        if(prev_glock == prev_glock_temp)
-            break;  
+      //  if(prev_glock == prev_glock_temp)
+         //   break;  
 
         // printf("I am here 2\n");
 
@@ -137,10 +134,18 @@ void ReleaseQLock(qlock_t *mlock) {
             qlock_t *prev_glock_temp;
             long temp;
 
-            // ptr, expected old value, new value to be inserted
-            temp = at_cmp_swap(&glock, mlock, NULL);
+            qlock_t *mlock_temp = mlock;
 
-            prev_glock_temp = (qlock_t *) temp;
+            if(atomic_compare_exchange_weak(&glock, &mlock_temp, NULL))
+            {
+                free(mlock);
+                return;
+            }
+
+            // ptr, expected old value, new value to be inserted
+           // temp = at_cmp_swap(&glock, mlock, NULL);
+
+          //  prev_glock_temp = (qlock_t *) temp;
 
 
             //printf("prev_glock_temp: %p \n", prev_glock_temp);
@@ -148,11 +153,11 @@ void ReleaseQLock(qlock_t *mlock) {
            // printf("mlock: %p\n", mlock);
 
 
-            if(mlock == prev_glock_temp)
+           /* if(mlock == prev_glock_temp)
             {
                 free(mlock);
                 return; 
-            }
+            }*/
 
         }
         else {
