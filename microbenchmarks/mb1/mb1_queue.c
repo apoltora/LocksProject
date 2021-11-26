@@ -44,8 +44,6 @@ qlock_t *AcquireQLock() {
     qlock_t *mlock;
     mlock = (qlock_t *) malloc(sizeof(qlock_t));
 
-    assert(mlock != NULL);
-
     mlock->next = NULL;
     mlock->state = UNLOCKED;
 
