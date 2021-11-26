@@ -55,6 +55,7 @@ qlock_t *AcquireQLock() {
     {
         prev_glock = glock;
 
+        // parameters are destination, expected value, desired value
         if(atomic_compare_exchange_weak(&glock, &prev_glock, mlock))
             break;
 
@@ -87,6 +88,7 @@ void ReleaseQLock(qlock_t *mlock) {
 
             qlock_t *mlock_temp = mlock;
 
+            // parameters are destination, expected value, desired value
             if(atomic_compare_exchange_weak(&glock, &mlock_temp, NULL))
             {
                 free(mlock);
