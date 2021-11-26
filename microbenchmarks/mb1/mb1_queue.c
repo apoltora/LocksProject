@@ -3,9 +3,9 @@
  * Creating queue lock
  * 
  * Use this command to compile:
- * gcc -o ---- -lpthread ------
+ * gcc -o queue -lpthread mb1_queue.c
  * Then to run:
- * ./-----
+ * ./queue
  * 
  * Authors: Alexandra Poltorak, Kiran Kumar Rajan Babu
  * Contact: apoltora@andrew.cmu.edu, krajanba@andrew.cmu.edu
@@ -19,39 +19,97 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #define NUM_THREADS 8
+#define CACHE_LINE_SIZE 64 
 
-typedef struct lock {
-    int next_ticket;
-    int now_serving;
-} lock_t;
+typedef enum { LOCKED, UNLOCKED } qlock_state;
 
-extern void atomic_increment(int *x);
-volatile lock_t l;
+typedef struct qlock {
+
+    volatile qlock_state state;
+    char padding[CACHE_LINE_SIZE - sizeof(qlock_state)]; //padding
+    struct qlock* volatile next;
+
+} qlock_t;
+
+
+qlock_t* volatile glock;
 
 int x;
 
+void AcquireQLock(qlock_t *mlock) {
 
+    assert(mlock != NULL);
 
-AcquireQLock(*glock, *mlock) {
     mlock->next = NULL;
     mlock->state = UNLOCKED;
-    ATOMIC();
-    prev = glock
-    *glock = mlock
-    END_ATOMIC();
-    if (prev == NULL) return;
+
+    qlock_t *prev_glock;
+    qlock_t *prev_glock_temp;
+    long temp;
+
+
+    while(1)
+    {
+        prev_glock = glock;
+
+        temp = at_cmp_swap(&glock, prev_glock, mlock);
+        //temp = at_cmp_swap(glock, prev_glock, mlock);
+        prev_glock_temp = (qlock_t *) temp;
+
+        // ptr, expected old value, new value to be inserted
+       // bool result = __atomic_compare_exchange_n (glock, prev_glock, mlock, false);
+
+        if(prev_glock == prev_glock_temp)
+            break;  
+
+         printf("I am here 2\n");
+
+    }
+
+
+   // prev_glock = (void *) xchg_64((void *)mlock, (void *)glock);
+
+  //  int my_ticket = atomic_increment(&l->next_ticket);
+
+
+    // no thread in the queue lock yet.
+    if (prev_glock == NULL)
+    {
+        printf("I am here....1\n");
+        return;
+    }
+
     mlock->state = LOCKED;
-    prev->next = mlock;
-    while (mlock->state == LOCKED); // SPIN
+    prev_glock->next = mlock;
+    printf("I am here\n");
+
+    while (mlock->state == LOCKED); // SPIN HERE...
+
 }
 
-ReleaseQLock(*glock, *mlock) {
+
+void ReleaseQLock(qlock_t *mlock) {
     do {
-        if (mlock->next) {
-            x = CMPXCHG(glock, mlock, NULL);
-            if (x == mlock) return;
+        if (mlock->next == NULL) {
+            // ptr, expected old value, new value to be inserted
+            qlock_t *prev_glock_temp;
+            long temp;
+            temp = at_cmp_swap(&glock, mlock, NULL);
+
+            prev_glock_temp = (qlock_t *) temp;
+
+
+            //printf("prev_glock_temp: %p \n", prev_glock_temp);
+
+           // printf("mlock: %p\n", mlock);
+
+
+            if(mlock == prev_glock_temp)
+                return; 
+
         }
         else {
             mlock->next->state = UNLOCKED;
@@ -63,10 +121,19 @@ ReleaseQLock(*glock, *mlock) {
 
 void *operation(void *vargp) {
     // place a start timer here
-    Lock(&l);
+    qlock_t *mylock;
+    mylock = (qlock_t *) malloc(sizeof(qlock_t));
+
+    AcquireQLock(mylock);
+
     // place an end timer here
     x++;
-    unlock(&l);
+
+    //printf("I am here \n");
+    
+    ReleaseQLock(mylock);
+
+  //  free(mylock);
     // place an end timer here
     return vargp;
 }
@@ -74,17 +141,32 @@ void *operation(void *vargp) {
 
 int main() {
     x = 0;
-    pthread_t threads[NUM_THREADS];
-    void *tmp_result;
-    int i, j;
 
+    ///initialize glock
+    glock = NULL;
+
+    pthread_t threads[NUM_THREADS];
+    int i, j;
 
     for (i = 0; i < NUM_THREADS; i++) {
         pthread_create(&threads[i], NULL, operation, NULL);    // make the threads run the operation function
     }
+
     for (j = 0; j < NUM_THREADS; j++) {
         pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
     }
-    return x;
+
+
+    // free the linkedlist
+    while(glock != NULL)
+    {
+        qlock_t *lock = glock;
+        glock = glock->next;
+        free(lock);
+    }
+
+    printf("The value of x is : %d\n", x);
+    return 0;
+
 }
 
