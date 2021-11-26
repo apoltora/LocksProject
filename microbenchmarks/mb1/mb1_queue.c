@@ -3,7 +3,7 @@
  * Creating queue lock
  * 
  * Use this command to compile:
- * gcc -o queue -lpthread mb1_queue.c
+ * gcc -o queue -lpthread mb1_queue.c mb1_queue.s
  * Then to run:
  * ./queue
  * 
@@ -39,7 +39,10 @@ qlock_t* volatile glock;
 
 int x;
 
-void AcquireQLock(qlock_t *mlock) {
+qlock_t *AcquireQLock() {
+
+    qlock_t *mlock;
+    mlock = (qlock_t *) malloc(sizeof(qlock_t));
 
     assert(mlock != NULL);
 
@@ -65,21 +68,17 @@ void AcquireQLock(qlock_t *mlock) {
         if(prev_glock == prev_glock_temp)
             break;  
 
-         printf("I am here 2\n");
+        // printf("I am here 2\n");
 
     }
 
-
    // prev_glock = (void *) xchg_64((void *)mlock, (void *)glock);
-
-  //  int my_ticket = atomic_increment(&l->next_ticket);
-
 
     // no thread in the queue lock yet.
     if (prev_glock == NULL)
     {
         printf("I am here....1\n");
-        return;
+        return mlock;
     }
 
     mlock->state = LOCKED;
@@ -88,15 +87,20 @@ void AcquireQLock(qlock_t *mlock) {
 
     while (mlock->state == LOCKED); // SPIN HERE...
 
+    return mlock;
+
 }
 
 
 void ReleaseQLock(qlock_t *mlock) {
     do {
+        // last element condition
         if (mlock->next == NULL) {
-            // ptr, expected old value, new value to be inserted
+            
             qlock_t *prev_glock_temp;
             long temp;
+
+            // ptr, expected old value, new value to be inserted
             temp = at_cmp_swap(&glock, mlock, NULL);
 
             prev_glock_temp = (qlock_t *) temp;
@@ -108,11 +112,15 @@ void ReleaseQLock(qlock_t *mlock) {
 
 
             if(mlock == prev_glock_temp)
+            {
+                free(mlock);
                 return; 
+            }
 
         }
         else {
             mlock->next->state = UNLOCKED;
+            free(mlock);
             return;
         }
     } while(1);
@@ -122,9 +130,8 @@ void ReleaseQLock(qlock_t *mlock) {
 void *operation(void *vargp) {
     // place a start timer here
     qlock_t *mylock;
-    mylock = (qlock_t *) malloc(sizeof(qlock_t));
-
-    AcquireQLock(mylock);
+   
+    mylock = AcquireQLock();
 
     // place an end timer here
     x++;
@@ -158,12 +165,12 @@ int main() {
 
 
     // free the linkedlist
-    while(glock != NULL)
+    /*while(glock != NULL)
     {
         qlock_t *lock = glock;
         glock = glock->next;
         free(lock);
-    }
+    }*/
 
     printf("The value of x is : %d\n", x);
     return 0;
