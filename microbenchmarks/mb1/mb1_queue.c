@@ -46,15 +46,11 @@ qlock_t *AcquireQLock() {
     qlock_t *mlock;
     mlock = (qlock_t *) malloc(sizeof(qlock_t));
 
-    assert(mlock != NULL);
-
     mlock->next = NULL;
     mlock->state = UNLOCKED;
 
     qlock_t *prev_glock;
     qlock_t *prev_glock_temp;
-    unsigned long long temp;
-
 
     while(1)
     {
