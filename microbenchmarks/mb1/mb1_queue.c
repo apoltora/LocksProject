@@ -51,20 +51,57 @@ qlock_t *AcquireQLock() {
 
     qlock_t *prev_glock;
     qlock_t *prev_glock_temp;
-    long temp;
+    unsigned long long temp;
 
 
     while(1)
     {
         prev_glock = glock;
 
-        temp = at_cmp_swap(&glock, prev_glock, mlock);
-        //temp = at_cmp_swap(glock, prev_glock, mlock);
+        unsigned long long param1, param2, param3;
+
+        param1 = (unsigned long long) &glock;
+
+        param2 = (unsigned long long) prev_glock;
+
+        param3 = (unsigned long long) mlock;
+
+        //temp = at_cmp_swap((void *)&glock, (void *)prev_glock, (void *)mlock);
+
+        printf("mlock: %p\n", mlock);
+
+        printf("prev_glock: %p\n", prev_glock);
+
+        printf("param3: %0x \n", param3);
+
+        temp = at_cmp_swap(param1, param2, param3);
+
+        printf("temp: %0x \n", temp);
+
+        assert(0);
+
+        temp = ((temp << 16) >> 16);
+                //temp = at_cmp_swap(glock, prev_glock, mlock);
         prev_glock_temp = (qlock_t *) temp;
+
+     //   printf("temp: %0x \n", temp);
+
+       // printf("prev_glock_temp: %p \n", prev_glock_temp);
+
+       // printf("prev_glock: %p\n", prev_glock);
+
+        
+       
+
+       // printf("sizeof prev_glock_temp: %d\n", sizeof(prev_glock_temp));
+
+        //printf("sizeof prev_glock: %d\n", sizeof(prev_glock));
+
 
         // ptr, expected old value, new value to be inserted
        // bool result = __atomic_compare_exchange_n (glock, prev_glock, mlock, false);
 
+        //TODO: this if is not happening...solve it
         if(prev_glock == prev_glock_temp)
             break;  
 
