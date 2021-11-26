@@ -37,6 +37,8 @@ typedef struct qlock {
 
 qlock_t* volatile glock;
 
+extern void* at_cmp_swap(void* param1, void* param2, void* param3);
+
 int x;
 
 qlock_t *AcquireQLock() {
@@ -58,31 +60,35 @@ qlock_t *AcquireQLock() {
     {
         prev_glock = glock;
 
-        unsigned long long param1, param2, param3;
+       // unsigned long long param1, param2, param3;
 
-        param1 = (unsigned long long) &glock;
+       // param1 = (unsigned long long) &glock;
 
-        param2 = (unsigned long long) prev_glock;
+        //param2 = (unsigned long long) prev_glock;
 
-        param3 = (unsigned long long) mlock;
+        //param3 = (unsigned long long) mlock;
 
         //temp = at_cmp_swap((void *)&glock, (void *)prev_glock, (void *)mlock);
 
-        printf("mlock: %p\n", mlock);
+      //  printf("mlock: %p\n", mlock);
 
-        printf("prev_glock: %p\n", prev_glock);
+       // printf("prev_glock: %p\n", prev_glock);
 
-        printf("param3: %0x \n", param3);
+       // printf("param3: %0x \n", param3);
 
-        temp = at_cmp_swap(param1, param2, param3);
+        printf("prev_glock: %0x \n", prev_glock);
 
-        printf("temp: %0x \n", temp);
+        prev_glock_temp = (qlock_t *) at_cmp_swap((void *) &glock, (void *) prev_glock, (void *) mlock);
 
-        assert(0);
+        printf("prev_glock_temp: %0x \n", prev_glock_temp);
 
-        temp = ((temp << 16) >> 16);
+        
+
+        //assert(0);
+
+      //  temp = ((temp << 16) >> 16);
                 //temp = at_cmp_swap(glock, prev_glock, mlock);
-        prev_glock_temp = (qlock_t *) temp;
+      //  prev_glock_temp = (qlock_t *) temp;
 
      //   printf("temp: %0x \n", temp);
 
@@ -114,13 +120,13 @@ qlock_t *AcquireQLock() {
     // no thread in the queue lock yet.
     if (prev_glock == NULL)
     {
-        printf("I am here....1\n");
+       // printf("I am here....1\n");
         return mlock;
     }
 
     mlock->state = LOCKED;
     prev_glock->next = mlock;
-    printf("I am here\n");
+    printf("I am here\n\n\n");
 
     while (mlock->state == LOCKED); // SPIN HERE...
 
@@ -135,12 +141,12 @@ void ReleaseQLock(qlock_t *mlock) {
         if (mlock->next == NULL) {
             
             qlock_t *prev_glock_temp;
-            long temp;
+            //void * temp;
 
             // ptr, expected old value, new value to be inserted
-            temp = at_cmp_swap(&glock, mlock, NULL);
+        prev_glock_temp =  (qlock_t *) at_cmp_swap((void *) &glock, (void *) mlock, NULL);
 
-            prev_glock_temp = (qlock_t *) temp;
+            //prev_glock_temp = (qlock_t *) temp;
 
 
             //printf("prev_glock_temp: %p \n", prev_glock_temp);
