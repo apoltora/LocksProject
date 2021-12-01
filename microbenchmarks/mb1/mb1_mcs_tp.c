@@ -315,7 +315,7 @@ void *operation(void *vargp) {
         else // returned 1... lock acquired
             break;
 
-
+        // retry acquire...
         ret_val = AcquireQLock(mylock);
     }
 
