@@ -91,7 +91,7 @@ q_lock_t lock;
 int x;
 
 //function to return current time
-inline double get_time_func()
+double get_time_func()
 {
     struct timespec t0;
     double time_in_sec;
@@ -167,7 +167,7 @@ int AcquireQLock(qnode_t *mlock) {
             // check whether lock holder is preempted... perform a yield...
             // help lock holder to make progress
             if(get_time_func() > (lock.crit_sec_start_time + MAX_CS_TIME))
-                sched_yield(2);
+                sched_yield();
 
             //mlock->last_lock = lock.glock;   
 
@@ -201,7 +201,7 @@ int AcquireQLock(qnode_t *mlock) {
             // check whether lock holder is preempted... perform a yield...
             // help lock holder to make progress
             if(get_time_func() > (lock.crit_sec_start_time + MAX_CS_TIME))
-                sched_yield(2);
+                sched_yield();
 
             // lock acquire failed because the thread TIMED_OUT
             return -2;
