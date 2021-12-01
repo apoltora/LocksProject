@@ -102,6 +102,8 @@ inline double get_time_func()
     }
 
     time_in_sec = ((double) t0.tv_sec);
+
+    //? Will we need to do this? and is this correct ?
 //time_in_sec = ( ((double) t0.tv_sec) + ( ((double) t0.tv_nsec)/1000000000L ));
     
     return time_in_sec; // time_in_seconds
