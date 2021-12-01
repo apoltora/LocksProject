@@ -31,23 +31,44 @@
 // How long should a thread keep spinning while waiting in the queue ? 
 // Also known as PATIENCE INTERVAL...
 // After this timeout has reached the thread can perform a yield or execute an alternate execution path
-#define TIMEOUT 200 // in microseconds
+#define PATIENCE 200 // in microseconds
 
-// If the current system time is more than the thread's latest published time by this value then we can assume the thread has been preempted.
-#define PREEMPTION_THRESHOLD_TIME 10 // in microseconds
+// maximum time taken to execute the critical section...lock holder is preempted if it is holding the lock more than this time
+// yield now to help the lock holder to get rescheduled
+// measure the time of critical section and then use that time here
+#define MAX_CS_TIME 2000 // in microseconds
 
 
-typedef enum { AVAILABLE, WAITING, LEFT, REMOVED } qnode_state;
+
+// Lock Holder checks this value while handing the lock to other thread
+// If the current system time is more than the (thread's latest published time + UPD_DELAY) by this value then we can assume the thread has been preempted.
+// no need to handover the lock to this thread in that case
+
+// preemption condition: 
+// current_sys_time > ((published_time + UPD_DELAY) + PREEMPTION_THRESHOLD_TIME)
+// This value should be very small...
+// this is just to give some tolerence to this condition.....
+// just to find that published time has really become stale or not...
+#define PREEMPTION_THRESHOLD_TIME 1 // in microseconds
+
+// the approx time it takes for a thread to see a timestamp from another thread
+#define UPD_DELAY 10 // in microseconds
+
+
+typedef enum { AVAILABLE, WAITING, TIMED_OUT, REMOVED } qnode_state;
 
 
 // A structure to represent a particular queue node in the queue lock
 typedef struct q_node {
 
-    volatile qnode_state state;
+    volatile qnode_state _Atomic state;
     char padding[CACHE_LINE_SIZE - sizeof(qnode_state)]; //padding
-    volatile double publish_time;
+    volatile double published_time;
     char padding[CACHE_LINE_SIZE - sizeof(double)]; //padding
     struct q_node* volatile next;
+
+    //not sure whether we need this
+    q_lock_t* last_lock;
 
 } qnode_t;
 
@@ -55,8 +76,10 @@ typedef struct q_node {
 // A structure to represent the global lock node
 typedef struct q_lock {
 
-    qnode_t* volatile _Atomic glock;
+    // start time of the critical section
     volatile double crit_sec_start_time;
+    char padding[CACHE_LINE_SIZE - sizeof(double)]; //padding
+    qnode_t* volatile _Atomic glock;
 
 } q_lock_t;
 
@@ -67,42 +90,114 @@ q_lock_t lock;
 
 int x;
 
-qnode_t *AcquireQLock() {
+//function to return current time
+double get_time_func()
+{
 
-    qnode_t *mlock;
-    mlock = (qnode_t *) malloc(sizeof(qnode_t));
 
-    mlock->next = NULL;
-    mlock->state = AVAILABLE;
+}
 
-    qnode_t *prev_glock;
-    qnode_t *prev_glock_temp;
-    unsigned long long temp;
+
+int AcquireQLock(qnode_t *mlock) {
+
+    double acquire_start_time = get_time_func();
+
+    qnode_state temp_state = TIMED_OUT;
+    // If current status is timeout...then make it to waiting
+    if(atomic_compare_exchange_weak(&(mlock->state), &temp_state, WAITING))
+    { 
+        // atomic state swap success....rejoined the queue
+    }
+    else // start a new try
+    {
+        mlock->next = NULL;
+        mlock->state = WAITING;
+
+        qnode_t *prev_glock;
+
+        // add mlock to the tail of global_lock
+        while(1)
+        {
+            prev_glock = lock.glock;
+
+            // parameters are destination, expected value, desired value
+            if(atomic_compare_exchange_weak(&(lock.glock), &prev_glock, mlock))
+                break;
+
+        }
+
+        // no thread in the queue lock yet...lock acquired...
+        if (prev_glock == NULL)
+        {
+            lock.crit_sec_start_time = get_time_func();
+            return 1;
+        }
+        else
+        {
+            prev_glock->next = mlock;
+        }
+
+    }
+
 
     while(1)
     {
-        prev_glock = lock.glock;
+        // lock holder released and handed the lock to the waiting node
+        if(mlock->state == AVAILABLE)
+        {
+            //lock acquired
+            lock.crit_sec_start_time = get_time_func();
+            return 1;
+        }
+        // lock holder has removed the node
+        else if(mlock->state == REMOVED)
+        {
+            // check whether lock holder is preempted... perform a yield...
+            // help lock holder to make progress
+            if(get_time_func() > (lock.crit_sec_start_time + MAX_CS_TIME))
+                sched_yield(2);
 
-        // parameters are destination, expected value, desired value
-        if(atomic_compare_exchange_weak(&(lock.glock), &prev_glock, mlock))
-            break;
+            //mlock->last_lock = lock.glock;   
+
+            // lock acquire failed because the thread was preempted while the lock head tried to handover the lock 
+            return -1;
+        }
+
+        // waiting in the queue
+        while(mlock->state == WAITING)
+        {
+            // publish your time...to indicate that the thread is not preempted.
+            mlock->published_time = get_time_func();
+
+            // keep looping in this while loop wait until patience time
+            if(!(get_time_func() > (acquire_start_time + PATIENCE)))
+                continue;
+
+
+            /** END OF PATIENCE **/
+
+            temp_state = WAITING;
+            if(!atomic_compare_exchange_weak(&(mlock->state), &temp_state, TIMED_OUT))
+            {
+                // mlock state has been changed by lock holder
+                // breaks from this immediate while loop and loops in outer while loop
+                break;
+            }
+
+            /* State has already been changed to TIMED_OUT at this point by the previous atomic_compare_exchange_weak */
+
+            // check whether lock holder is preempted... perform a yield...
+            // help lock holder to make progress
+            if(get_time_func() > (lock.crit_sec_start_time + MAX_CS_TIME))
+                sched_yield(2);
+
+            // lock acquire failed because the thread TIMED_OUT
+            return -2;
+
+        }
 
     }
-
-    // no thread in the queue lock yet.
-    if (prev_glock == NULL)
-    {
-        return mlock;
-    }
-
-    mlock->state = WAITING;
-    prev_glock->next = mlock;
-    printf("I am here\n");
-
-    while (mlock->state == WAITING); // SPIN HERE...
-
-    return mlock;
-
+    
 }
 
 
@@ -136,8 +231,14 @@ void ReleaseQLock(qnode_t *mlock) {
 void *operation(void *vargp) {
     // place a start timer here
     qnode_t *mylock;
+    mylock = (qnode_t *) calloc(sizeof(qnode_t));
+
+    // initialize first time
+    mylock->state = WAITING;
    
-    mylock = AcquireQLock();
+    int ret_val;
+
+    ret_val = AcquireQLock(mylock);
 
     // place an end timer here
     x++;
