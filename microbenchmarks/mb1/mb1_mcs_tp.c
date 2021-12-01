@@ -312,7 +312,7 @@ void *operation(void *vargp) {
             // retry is done below.... do nothing here.
         }
 
-        else // returned 1... lock acquired
+        else // returned 1... lock acquired...
             break;
 
         // retry acquire...
@@ -335,6 +335,9 @@ void *operation(void *vargp) {
 
 
     ReleaseQLock(mylock);
+
+    // free the mylock as the job is over here...
+    free(mylock);
 
     return vargp;
 }
