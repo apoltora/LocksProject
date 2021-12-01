@@ -45,11 +45,11 @@
 // no need to handover the lock to this thread in that case
 
 // preemption condition: 
-// current_sys_time > ((published_time + UPD_DELAY) + PREEMPTION_THRESHOLD_TIME)
+// current_sys_time > ((published_time + UPD_DELAY) + PREEMPTION_TOLERANCE)
 // This value should be very small...
 // this is just to give some tolerence to this condition.....
 // just to find that published time has really become stale or not...
-#define PREEMPTION_THRESHOLD_TIME 1 // in microseconds
+#define PREEMPTION_TOLERANCE 1 // in microseconds
 
 // the approx time it takes for a thread to see a timestamp from another thread
 #define UPD_DELAY 10 // in microseconds
@@ -202,29 +202,79 @@ int AcquireQLock(qnode_t *mlock) {
 
 
 void ReleaseQLock(qnode_t *mlock) {
-    do {
-        // last element condition
-        if (mlock->next == NULL) {
-            
-            qnode_t *prev_glock_temp;
-            long temp;
 
-            qnode_t *mlock_temp = mlock;
+    qnode_t *curr_node;
+    qnode_t *next_node;
+    qnode_t *scanned_qhead = NULL;
+    int scanned_nodes = 0;
+    
+    curr_node = mlock;
+
+    while(1)
+    {
+
+        next_node = curr_node->next;
+
+        // no successor... last in the queue... so make the global lock as NULL
+        if(next_node == NULL)
+        {
+
+            qnode_t *curr_node_temp = curr_node;
 
             // parameters are destination, expected value, desired value
-            if(atomic_compare_exchange_weak(&(lock.glock), &mlock_temp, NULL))
+            if(atomic_compare_exchange_weak(&(lock.glock), &curr_node_temp, NULL))
             {
-                free(mlock);
+                //free(curr_node);
+                curr_node->state = REMOVED;
                 return;
             }
 
+            /* The atomic_compare_exchange_weak above failed...so a new successor got enqueued...get that successor and leave this while loop */
+            while (next_node == NULL)
+            {
+                next_node = curr_node->next;   
+            }
+
         }
-        else {
-            mlock->next->state = AVAILABLE;
-            free(mlock);
-            return;
+
+        if(++scanned_nodes < NUM_THREADS)
+            curr_node->state = REMOVED;
+        else if(scanned_qhead == NULL)
+            scanned_qhead = curr_node;    
+
+
+        if(next_node->state == WAITING)
+        {
+            double next_node_published_time = next_node->published_time;
+
+            qnode_state temp_state = WAITING;
+
+            // check if successor is not preempted... if so handover the lock...
+
+            if((get_time_func() > ((next_node_published_time + UPD_DELAY) + PREEMPTION_TOLERANCE)) && (atomic_compare_exchange_weak(&(next_node->state), &temp_state, AVAILABLE)))
+            {
+
+                if(scanned_qhead != NULL)
+                {
+                    while(scanned_qhead != curr_node)
+                    {
+                        //free(scanned_qhead);
+                        scanned_qhead->state = REMOVED;
+                        scanned_qhead = scanned_qhead->next;
+                    }
+
+                }
+
+                return;
+
+            }
+
         }
-    } while(1);
+
+        curr_node = next_node;
+
+    }
+
 }
 
 
