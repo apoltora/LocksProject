@@ -2,7 +2,7 @@
  * This microbenchmark is a very simple add operation to a shared variable
  * Creating MCS Time-Published lock (variant of MCS queue lock)
  * 
- * This lock has two additional states LEFT and REMOVED when compared to *original MCS Queue lock.
+ * This lock has two additional states TIMED_OUT and REMOVED when compared to *original MCS Queue lock.
  * 
  * Use this command to compile:
  * clang -std=c11 -lpthread -o mcs_tp mb1_mcs_tp.c
@@ -207,7 +207,7 @@ void ReleaseQLock(qnode_t *mlock) {
     qnode_t *next_node;
     qnode_t *scanned_qhead = NULL;
     int scanned_nodes = 0;
-    
+
     curr_node = mlock;
 
     while(1)
@@ -256,7 +256,7 @@ void ReleaseQLock(qnode_t *mlock) {
 
                 if(scanned_qhead != NULL)
                 {
-                    while(scanned_qhead != curr_node)
+                    while(scanned_qhead != NULL && scanned_qhead != curr_node)
                     {
                         //free(scanned_qhead);
                         scanned_qhead->state = REMOVED;
@@ -279,7 +279,7 @@ void ReleaseQLock(qnode_t *mlock) {
 
 
 void *operation(void *vargp) {
-    // place a start timer here
+
     qnode_t *mylock;
     mylock = (qnode_t *) calloc(sizeof(qnode_t));
 
@@ -290,16 +290,52 @@ void *operation(void *vargp) {
 
     ret_val = AcquireQLock(mylock);
 
-    // place an end timer here
+    while(1)
+    {
+        if(ret_val == -1)
+        {
+            // TODO: try removing free and calloc from here and make sure they dont break correctness
+
+            // reclaim the node
+            free(mylock);
+
+            // allocate new space for new mylock
+            mylock = (qnode_t *) calloc(sizeof(qnode_t));
+            mylock->state = WAITING;
+
+        }
+
+        else if(ret_val == -2)
+        {
+            // node TIMED_OUT...
+            // retry acquire and try to rejoin the queue
+            // retry is done below.... do nothing here.
+        }
+
+        else // returned 1... lock acquired
+            break;
+
+
+        ret_val = AcquireQLock(mylock);
+    }
+
+
+    /* Start of CRITICAL SECTION */
+
+
     x++;
 
    // long delay = 1000000000;
     //while(delay)
       //  delay--;
 
+
+
+    /* End of CRITICAL SECTION */
+
+
     ReleaseQLock(mylock);
 
-    // place an end timer here
     return vargp;
 }
 
