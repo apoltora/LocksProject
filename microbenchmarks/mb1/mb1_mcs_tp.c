@@ -62,13 +62,13 @@ typedef enum { AVAILABLE, WAITING, TIMED_OUT, REMOVED } qnode_state;
 typedef struct q_node {
 
     volatile qnode_state _Atomic state;
-    char padding[CACHE_LINE_SIZE - sizeof(qnode_state)]; //padding
+    char padding1[CACHE_LINE_SIZE - sizeof(qnode_state)]; //padding
     volatile double published_time;
-    char padding[CACHE_LINE_SIZE - sizeof(double)]; //padding
+    char padding2[CACHE_LINE_SIZE - sizeof(double)]; //padding
     struct q_node* volatile next;
 
     //not sure whether we need this
-    q_lock_t* last_lock;
+   // q_lock_t* last_lock;
 
 } qnode_t;
 
@@ -78,7 +78,7 @@ typedef struct q_lock {
 
     // start time of the critical section
     volatile double crit_sec_start_time;
-    char padding[CACHE_LINE_SIZE - sizeof(double)]; //padding
+    char padding3[CACHE_LINE_SIZE - sizeof(double)]; //padding
     qnode_t* volatile _Atomic glock;
 
 } q_lock_t;
@@ -93,8 +93,17 @@ int x;
 //function to return current time
 double get_time_func()
 {
+    struct timespec t0;
+    double time_in_sec;
 
+    if(timespec_get(&t0, TIME_UTC) != TIME_UTC) {
+        printf("Error in calling timespec_get\n");
+        exit(EXIT_FAILURE);
+    }
 
+time_in_sec = ( ((double) t0.tv_sec) + ( ((double) t0.tv_nsec)/1000000000L ) );
+    
+    return time_in_sec; // time_in_seconds
 }
 
 
@@ -281,7 +290,7 @@ void ReleaseQLock(qnode_t *mlock) {
 void *operation(void *vargp) {
 
     qnode_t *mylock;
-    mylock = (qnode_t *) calloc(sizeof(qnode_t));
+    mylock = (qnode_t *) calloc(1, sizeof(qnode_t));
 
     // initialize first time
     mylock->state = WAITING;
@@ -300,7 +309,7 @@ void *operation(void *vargp) {
             free(mylock);
 
             // allocate new space for new mylock
-            mylock = (qnode_t *) calloc(sizeof(qnode_t));
+            mylock = (qnode_t *) calloc(1, sizeof(qnode_t));
             mylock->state = WAITING;
 
         }
