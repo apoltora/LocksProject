@@ -91,7 +91,7 @@ q_lock_t lock;
 int x;
 
 //function to return current time
-double get_time_func()
+inline double get_time_func()
 {
     struct timespec t0;
     double time_in_sec;
@@ -101,7 +101,8 @@ double get_time_func()
         exit(EXIT_FAILURE);
     }
 
-time_in_sec = ( ((double) t0.tv_sec) + ( ((double) t0.tv_nsec)/1000000000L ) );
+    time_in_sec = ((double) t0.tv_sec);
+//time_in_sec = ( ((double) t0.tv_sec) + ( ((double) t0.tv_nsec)/1000000000L ));
     
     return time_in_sec; // time_in_seconds
 }
