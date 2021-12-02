@@ -110,12 +110,15 @@ int AcquireQLock(qnode_t *mlock) {
 
     qnode_state temp_state = TIMED_OUT;
     // If current status is timeout...then make it to waiting
+    // possible states are TIMED_OUT or REMOVED
     if(atomic_compare_exchange_weak(&(mlock->state), &temp_state, WAITING))
     { 
         // atomic state swap success....rejoined the queue
     }
-    else // start a new try
+    else // state is REMOVED or starting first try here // start a new try
     {
+        // no need atomic modification here... 
+        // you are the only one changing it here
         mlock->next = NULL;
         mlock->state = WAITING;
 
@@ -147,34 +150,7 @@ int AcquireQLock(qnode_t *mlock) {
 
 
     while(1)
-    {
-        // lock holder released and handed the lock to the waiting node
-        if(mlock->state == AVAILABLE)
-        {
-            //lock acquired
-            lock.crit_sec_start_time = get_time_func();
-            return 1;
-        }
-        // lock holder has removed the node
-        else if(mlock->state == REMOVED)
-        {
-            // check whether lock holder is preempted... perform a yield...
-            // help lock holder to make progress
-              //  printf("I am in REMOVED \n");
-            //    assert(0);
-
-            if(get_time_func() > (lock.crit_sec_start_time + MAX_CS_TIME))
-            {
- 
-                sched_yield();
-
-            }
-            //mlock->last_lock = lock.glock;   
-
-            // lock acquire failed because the thread was preempted while the lock head tried to handover the lock 
-            return -1;
-        }
-
+    {   
         // waiting in the queue
         while(mlock->state == WAITING)
         {
@@ -200,12 +176,41 @@ int AcquireQLock(qnode_t *mlock) {
 
             // check whether lock holder is preempted... perform a yield...
             // help lock holder to make progress
-            if(get_time_func() > (lock.crit_sec_start_time + MAX_CS_TIME))
+            // ? Cant we simply yield here...why this condition?
+           // if(get_time_func() > (lock.crit_sec_start_time + MAX_CS_TIME))
                 sched_yield();
 
             // lock acquire failed because the thread TIMED_OUT
             return -2;
 
+        }
+
+
+        // lock holder released and handed the lock to the waiting node
+        if(mlock->state == AVAILABLE)
+        {
+            //lock acquired
+            lock.crit_sec_start_time = get_time_func();
+            return 1;
+        }
+
+
+        // lock holder has removed the node
+        else if(mlock->state == REMOVED)
+        {
+            // check whether lock holder is preempted... perform a yield...
+            // help lock holder to make progress
+              //  printf("I am in REMOVED \n");
+            //    assert(0);
+
+            if(get_time_func() > (lock.crit_sec_start_time + MAX_CS_TIME))
+            {
+                sched_yield();
+            }
+            //mlock->last_lock = lock.glock;   
+
+            // lock acquire failed because the thread was preempted/timed_out when the lock head tried to handover the lock 
+            return -1;
         }
 
     }
@@ -237,6 +242,7 @@ void ReleaseQLock(qnode_t *mlock) {
             if(atomic_compare_exchange_weak(&(lock.glock), &curr_node_temp, NULL))
             {
                 //free(curr_node);
+                // ? should this be atomic
                 curr_node->state = REMOVED;
                 return;
             }
@@ -248,12 +254,13 @@ void ReleaseQLock(qnode_t *mlock) {
             }
 
         }
-
-        if(++scanned_nodes < NUM_THREADS)
-            curr_node->state = REMOVED;
-        else if(scanned_qhead == NULL)
-            scanned_qhead = curr_node;    
-
+        
+        // ? How to handle the treadmill case....we need to bound the number of runs of this outer while loop
+        //if(++scanned_nodes < NUM_THREADS)
+            // ? is this needed here as you update the next_node's state properly
+            curr_node->state = REMOVED; // giving up the AVAILABLE state
+       // else if(scanned_qhead == NULL)
+          //  scanned_qhead = curr_node;    
 
         if(next_node->state == WAITING)
         {
@@ -263,25 +270,64 @@ void ReleaseQLock(qnode_t *mlock) {
 
             // check if successor is not preempted... if so handover the lock...
 
-            if((get_time_func() <= (next_node_published_time + UPD_DELAY)) && (atomic_compare_exchange_weak(&(next_node->state), &temp_state, AVAILABLE)))
+            if((get_time_func() <= (next_node_published_time + UPD_DELAY)))
             {
 
-                if(scanned_qhead != NULL)
+                if(atomic_compare_exchange_weak(&(next_node->state), &temp_state, AVAILABLE))
                 {
-                    while(scanned_qhead != NULL && scanned_qhead != curr_node)
-                    {
-                        //free(scanned_qhead);
-                       scanned_qhead->state = REMOVED;
-                        scanned_qhead = scanned_qhead->next;
-                    }
-                    printf(" I am here also \n");
-                   // assert(0);
+                    // lock transfer successful to next node
+                    return;
                 }
 
-                return;
+                // atomic_compare_exchange_weak failed.. Thread has TIMED_OUT 
+                //as a lock holder's responsibility, change the state to REMOVED
+                else
+                {               
+                    while(1)
+                    {
+                        /* possible state here is TIMED_OUT..or sometimes WAITING if the thread immediately rejoins the queue after doing a immediate retry (after it changed to timeout) */
+                        temp_state = next_node->state;
+
+                        // parameters are destination, expected value, desired value
+                        if(atomic_compare_exchange_weak(&(next_node->state), &temp_state, REMOVED))
+                            break;
+
+                    }
+                }
+
+            }
+            else
+            {
+                // Published timestamp is stale.... possibly Thread is preempted.// Lock holder changes state to REMOVED
+                while(1)
+                {
+                    // possible states here are WAITING and TIMED_OUT
+                    temp_state = next_node->state;
+
+                    // parameters are destination, expected value, desired value
+                    if(atomic_compare_exchange_weak(&(next_node->state), &temp_state, REMOVED))
+                        break;
+
+                }
 
             }
 
+        }
+
+        else if(next_node->state == TIMED_OUT)
+        {
+            // atomic swap next_node's state with removed state
+            qnode_state temp_state;
+            while(1)
+            {
+                // possible states here are WAITING and TIMED_OUT
+                temp_state = next_node->state;
+
+                // parameters are destination, expected value, desired value
+                if(atomic_compare_exchange_weak(&(next_node->state), &temp_state, REMOVED))
+                    break;
+
+            }
         }
 
         curr_node = next_node;
@@ -297,6 +343,7 @@ void *operation(void *vargp) {
 
     // initialize first time
     mylock->state = WAITING;
+    mylock->next = NULL;
    
     int ret_val;
 
@@ -314,6 +361,7 @@ void *operation(void *vargp) {
             // allocate new space for new mylock
             mylock = (qnode_t *) calloc(1, sizeof(qnode_t));
             mylock->state = WAITING;
+            mylock->next = NULL;
 
             printf(" preemption retry.....ret_val == -1 \n");
 
