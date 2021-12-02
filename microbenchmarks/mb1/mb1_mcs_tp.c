@@ -25,18 +25,18 @@
 #include <stdatomic.h>
 #include <time.h>
 
-#define NUM_THREADS 8
+#define NUM_THREADS 16
 #define CACHE_LINE_SIZE 64 
 
 // How long should a thread keep spinning while waiting in the queue ? 
 // Also known as PATIENCE INTERVAL...
 // After this timeout has reached the thread can perform a yield or execute an alternate execution path
-#define PATIENCE 200 // in microseconds
+#define PATIENCE 5 // in seconds // time of 4 critical sections
 
 // maximum time taken to execute the critical section...lock holder is preempted if it is holding the lock more than this time
 // yield now to help the lock holder to get rescheduled
 // measure the time of critical section and then use that time here
-#define MAX_CS_TIME 2000 // in microseconds
+#define MAX_CS_TIME 1.25 // in seconds
 
 
 
@@ -44,15 +44,9 @@
 // If the current system time is more than the (thread's latest published time + UPD_DELAY) by this value then we can assume the thread has been preempted.
 // no need to handover the lock to this thread in that case
 
-// preemption condition: 
-// current_sys_time > ((published_time + UPD_DELAY) + PREEMPTION_TOLERANCE)
-// This value should be very small...
-// this is just to give some tolerence to this condition.....
-// just to find that published time has really become stale or not...
-#define PREEMPTION_TOLERANCE 1 // in microseconds
-
 // the approx time it takes for a thread to see a timestamp from another thread
-#define UPD_DELAY 10 // in microseconds
+// keep this value slightly more than the exact upd_delay to provide some tolerance and to avoid false-positive in detecting preempted threads
+#define UPD_DELAY 0.00005 // 50 microseconds
 
 
 typedef enum { AVAILABLE, WAITING, TIMED_OUT, REMOVED } qnode_state;
@@ -101,10 +95,10 @@ double get_time_func()
         exit(EXIT_FAILURE);
     }
 
-    time_in_sec = ((double) t0.tv_sec);
+  //  time_in_sec = ((double) t0.tv_sec);
 
     //? Will we need to do this? and is this correct ?
-//time_in_sec = ( ((double) t0.tv_sec) + ( ((double) t0.tv_nsec)/1000000000L ));
+time_in_sec = ( ((double) t0.tv_sec) + ( ((double) t0.tv_nsec)/1000000000L ));
     
     return time_in_sec; // time_in_seconds
 }
@@ -166,9 +160,15 @@ int AcquireQLock(qnode_t *mlock) {
         {
             // check whether lock holder is preempted... perform a yield...
             // help lock holder to make progress
+              //  printf("I am in REMOVED \n");
+            //    assert(0);
+
             if(get_time_func() > (lock.crit_sec_start_time + MAX_CS_TIME))
+            {
+ 
                 sched_yield();
 
+            }
             //mlock->last_lock = lock.glock;   
 
             // lock acquire failed because the thread was preempted while the lock head tried to handover the lock 
@@ -257,13 +257,13 @@ void ReleaseQLock(qnode_t *mlock) {
 
         if(next_node->state == WAITING)
         {
-            double next_node_published_time = next_node->published_time;
-
             qnode_state temp_state = WAITING;
+            double next_node_published_time;
+            next_node_published_time = next_node->published_time;
 
             // check if successor is not preempted... if so handover the lock...
 
-            if((get_time_func() > ((next_node_published_time + UPD_DELAY) + PREEMPTION_TOLERANCE)) && (atomic_compare_exchange_weak(&(next_node->state), &temp_state, AVAILABLE)))
+            if((get_time_func() <= (next_node_published_time + UPD_DELAY)) && (atomic_compare_exchange_weak(&(next_node->state), &temp_state, AVAILABLE)))
             {
 
                 if(scanned_qhead != NULL)
@@ -271,10 +271,11 @@ void ReleaseQLock(qnode_t *mlock) {
                     while(scanned_qhead != NULL && scanned_qhead != curr_node)
                     {
                         //free(scanned_qhead);
-                        scanned_qhead->state = REMOVED;
+                       scanned_qhead->state = REMOVED;
                         scanned_qhead = scanned_qhead->next;
                     }
-
+                    printf(" I am here also \n");
+                   // assert(0);
                 }
 
                 return;
@@ -291,7 +292,6 @@ void ReleaseQLock(qnode_t *mlock) {
 
 
 void *operation(void *vargp) {
-
     qnode_t *mylock;
     mylock = (qnode_t *) calloc(1, sizeof(qnode_t));
 
@@ -315,6 +315,8 @@ void *operation(void *vargp) {
             mylock = (qnode_t *) calloc(1, sizeof(qnode_t));
             mylock->state = WAITING;
 
+            printf(" preemption retry.....ret_val == -1 \n");
+
         }
 
         else if(ret_val == -2)
@@ -322,6 +324,7 @@ void *operation(void *vargp) {
             // node TIMED_OUT...
             // retry acquire and try to rejoin the queue
             // retry is done below.... do nothing here.
+          // printf(" timeout retry....ret_val == -2 \n");
         }
 
         else // returned 1... lock acquired...
@@ -334,14 +337,23 @@ void *operation(void *vargp) {
 
     /* Start of CRITICAL SECTION */
 
+   // printf("Lock obtained \n");
 
+    //double time1 = get_time_func();
     x++;
 
-   // long delay = 1000000000;
-    //while(delay)
-      //  delay--;
+    long delay = 1000000000;
+    while(delay)
+        delay--;
 
+    //double time2 = get_time_func();
 
+    //double time_diff = time2-time1;
+
+ //printf("Time1 %lf \n", time1);
+   // printf("Time2 %lf \n", time2);
+
+   // printf("Time diff %lf \n", time_diff);
 
     /* End of CRITICAL SECTION */
 
