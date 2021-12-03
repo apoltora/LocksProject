@@ -25,7 +25,7 @@
 #include <stdatomic.h>
 #include <time.h>
 
-#define NUM_THREADS 16
+#define NUM_THREADS 20
 
 // Limit on the number of nodes the lock holder scan before releasing the lock 
 #define MAX_NODES_TO_SCAN 16
@@ -50,7 +50,16 @@
 
 // the approx time it takes for a thread to see a timestamp from another thread
 // keep this value slightly more than the exact upd_delay to provide some tolerance and to avoid false-positive in detecting preempted threads
-#define UPD_DELAY 0.00005 // 50 microseconds
+#define UPD_DELAY 0.0001 // 100 microsecs // 0.00005 - 50 microseconds
+
+
+volatile int preempted_perf_counter = 0;
+
+volatile int not_preempted_lock_release_success = 0;
+
+volatile int release_by_last_node_in_queue = 0;
+
+volatile int force_lock_release_second_while_loop = 0;
 
 
 typedef enum { AVAILABLE, WAITING, TIMED_OUT, REMOVED } qnode_state;
@@ -64,9 +73,6 @@ typedef struct q_node {
     volatile double published_time;
     char padding2[CACHE_LINE_SIZE - sizeof(double)]; //padding
     struct q_node* volatile next;
-
-    //? not sure whether we need this
-   // q_lock_t* last_lock;
 
 } qnode_t;
 
@@ -100,8 +106,6 @@ double get_time_func()
     }
 
   //  time_in_sec = ((double) t0.tv_sec);
-
-    //? Will we need to do this? and is this correct ?
 time_in_sec = ( ((double) t0.tv_sec) + ( ((double) t0.tv_nsec)/1000000000L ));
     
     return time_in_sec; // time_in_seconds
@@ -250,6 +254,7 @@ void ReleaseQLock(qnode_t *mlock) {
                 //free(curr_node);
                // curr_node->state = REMOVED; 
                // we have moved this before while loop
+                release_by_last_node_in_queue++;
                 return;
             }
 
@@ -284,6 +289,7 @@ void ReleaseQLock(qnode_t *mlock) {
                 if(atomic_compare_exchange_weak(&(next_node->state), &temp_state, AVAILABLE))
                 {
                     // lock transfer successful to next node
+                    not_preempted_lock_release_success++;
                     return;
                 }
 
@@ -302,6 +308,7 @@ void ReleaseQLock(qnode_t *mlock) {
                 // Published timestamp is stale.... possibly Thread is preempted.// Lock holder changes state to REMOVED
                 // possible states here are WAITING and TIMED_OUT
                 next_node->state = REMOVED;
+                preempted_perf_counter++;
 
             }
 
@@ -336,6 +343,7 @@ void ReleaseQLock(qnode_t *mlock) {
                 //free(curr_node);
                // curr_node->state = REMOVED; 
                // we have moved this before while loop
+                release_by_last_node_in_queue++;
                 return;
             }
 
@@ -363,8 +371,10 @@ void ReleaseQLock(qnode_t *mlock) {
         // parameters are destination, expected value, desired value
         // WAIT until the state is WAITING and then change it to AVAILABLE
         if(atomic_compare_exchange_weak(&(next_node->state), &temp_state, AVAILABLE))
+        {
+            force_lock_release_second_while_loop++;
             break;
-
+        }
     }
 
 
@@ -397,7 +407,7 @@ void *operation(void *vargp) {
             mylock->state = WAITING;
             mylock->next = NULL;
 
-            printf(" preemption retry.....ret_val == -1 \n");
+           // printf(" preemption retry.....ret_val == -1 \n");
 
         }
 
@@ -406,7 +416,7 @@ void *operation(void *vargp) {
             // node TIMED_OUT...
             // retry acquire and try to rejoin the queue
             // retry is done below.... do nothing here.
-           printf(" timeout retry....ret_val == -2 \n");
+          // printf(" timeout retry....ret_val == -2 \n");
         }
 
         else // returned 1... lock acquired...
@@ -467,7 +477,15 @@ int main() {
         pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
     }
 
-    printf("The value of x is : %d\n", x);
+   // printf("The value of x is : %d\n", x);
+    printf("The value of preempted_perf_counter is : %d\n", preempted_perf_counter);
+
+    printf("The value of not_preempted_lock_release_success is : %d\n", not_preempted_lock_release_success);
+
+    printf("The value of lock_release_by_last_node_in_queue is : %d\n", release_by_last_node_in_queue);
+
+    printf("The value of force_lock_release_second_while_loop is : %d\n", force_lock_release_second_while_loop);
+
     return 0;
 
 }
