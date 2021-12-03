@@ -28,7 +28,7 @@
 #define NUM_THREADS 20
 
 // Limit on the number of nodes the lock holder scan before releasing the lock 
-#define MAX_NODES_TO_SCAN 16
+#define MAX_NODES_TO_SCAN 20
 
 #define CACHE_LINE_SIZE 64 
 
@@ -53,6 +53,8 @@
 #define UPD_DELAY 0.0001 // 100 microsecs // 0.00005 - 50 microseconds
 
 
+// useful performance counters for observations...
+
 volatile int preempted_perf_counter = 0;
 
 volatile int not_preempted_lock_release_success = 0;
@@ -60,6 +62,17 @@ volatile int not_preempted_lock_release_success = 0;
 volatile int release_by_last_node_in_queue = 0;
 
 volatile int force_lock_release_second_while_loop = 0;
+
+volatile int timed_out_nodes_removed_by_lock_holder = 0;
+
+volatile int timeout_yield_count = 0;
+
+volatile int lock_holder_progress_yield_count = 0;
+
+volatile int total_timeout_occurrences = 0;
+
+volatile int qnodes_rejoined_after_timeout_success = 0;
+
 
 
 typedef enum { AVAILABLE, WAITING, TIMED_OUT, REMOVED } qnode_state;
@@ -122,6 +135,7 @@ int AcquireQLock(qnode_t *mlock) {
     if(atomic_compare_exchange_weak(&(mlock->state), &temp_state, WAITING))
     { 
         // atomic state swap success....rejoined the queue
+        qnodes_rejoined_after_timeout_success++;
     }
     else // state is REMOVED or starting first try here // start a new try
     {
@@ -182,8 +196,12 @@ int AcquireQLock(qnode_t *mlock) {
 
             /* State has already been changed to TIMED_OUT at this point by the previous atomic_compare_exchange_weak */
 
+            total_timeout_occurrences++;
+            timeout_yield_count++;
+
             // As we have timed out... perform a yield...
             sched_yield();
+            
 
             // lock acquire failed because the thread TIMED_OUT
             return -2;
@@ -210,6 +228,7 @@ int AcquireQLock(qnode_t *mlock) {
 
             if(get_time_func() > (lock.crit_sec_start_time + MAX_CS_TIME))
             {
+                lock_holder_progress_yield_count++;
                 sched_yield();
             }
             //mlock->last_lock = lock.glock;   
@@ -299,7 +318,7 @@ void ReleaseQLock(qnode_t *mlock) {
                 {   
                     /* possible state here is TIMED_OUT..or sometimes WAITING if the thread immediately rejoins the queue after doing a immediate retry (after it changed to timeout) */            
                     next_node->state = REMOVED;
-                 
+                    timed_out_nodes_removed_by_lock_holder++;
                 }
 
             }
@@ -319,6 +338,7 @@ void ReleaseQLock(qnode_t *mlock) {
             // possible states here are WAITING and TIMED_OUT
             //  Lock holder changes state to REMOVED
             next_node->state = REMOVED;
+            timed_out_nodes_removed_by_lock_holder++;
         }
 
         curr_node = next_node;
@@ -417,6 +437,11 @@ void *operation(void *vargp) {
             // retry acquire and try to rejoin the queue
             // retry is done below.... do nothing here.
           // printf(" timeout retry....ret_val == -2 \n");
+
+            //some delay before doing a retry 
+            /*long delay = 1000000000;
+            while(delay)
+                delay--;*/
         }
 
         else // returned 1... lock acquired...
@@ -478,13 +503,23 @@ int main() {
     }
 
    // printf("The value of x is : %d\n", x);
-    printf("The value of preempted_perf_counter is : %d\n", preempted_perf_counter);
+    printf("Predicted Preemptions : %d\n\n", preempted_perf_counter);
 
-    printf("The value of not_preempted_lock_release_success is : %d\n", not_preempted_lock_release_success);
+    printf("not_preempted_lock_release_success : %d\n\n", not_preempted_lock_release_success);
 
-    printf("The value of lock_release_by_last_node_in_queue is : %d\n", release_by_last_node_in_queue);
+    printf("lock_release_by_last_node_in_queue : %d\n\n", release_by_last_node_in_queue);
 
-    printf("The value of force_lock_release_second_while_loop is : %d\n", force_lock_release_second_while_loop);
+    printf("forced_lock_release_second_while_loop : %d\n\n", force_lock_release_second_while_loop);
+
+    printf("timed_out_nodes_removed_by_lock_holder : %d\n\n", timed_out_nodes_removed_by_lock_holder);
+
+    printf("Total timeouts occurred: %d\n\n", total_timeout_occurrences);
+
+    printf("sched_yield calls due to timeouts : %d\n\n", timeout_yield_count);
+
+    printf("qnodes_rejoined_after_timeout_success: %d\n\n", qnodes_rejoined_after_timeout_success);
+
+    printf("sched_yield calls to help preempted lock holder to progress : %d\n\n", lock_holder_progress_yield_count);
 
     return 0;
 
