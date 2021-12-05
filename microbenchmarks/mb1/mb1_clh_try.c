@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdatomic.h>
+#include <sched.h>
 
 #define NUM_THREADS 8
 #define CACHE_LINE_SIZE 64 
