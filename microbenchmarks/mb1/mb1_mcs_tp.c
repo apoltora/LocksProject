@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <stdatomic.h>
 #include <time.h>
+#include <sched.h>
 
 #define NUM_THREADS 20
 
