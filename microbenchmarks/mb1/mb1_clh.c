@@ -65,6 +65,7 @@ qlock_t *AcquireQLock() {
 
     // printf("I am here...\n");
 
+    // free the previous node here as it wont be used anymore.
     free(prev_glock);
 
     return mlock;
@@ -127,7 +128,7 @@ int main() {
 
     printf("The value of x is : %d\n", x);
 
-    // free the tail node of glock
+    // free the final tail node of glock
     free(glock);
     return 0;
 
