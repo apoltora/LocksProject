@@ -82,10 +82,9 @@ bool AcquireQLock(qlock_t *mlock)
 
     // As an optimization, check the lock once before querying timer
     if (pred->status == available) {
-        //TODO: uncomment the below code later to reclaim space
-        /*mlock->prev = NULL;
-        free(pred);*/
-        mlock->prev = pred;
+        mlock->prev = NULL;
+        free(pred);
+        //mlock->prev = pred;
         // lock acquired
         return true;
     }
@@ -96,10 +95,9 @@ bool AcquireQLock(qlock_t *mlock)
     while (get_time_func() - start_time < T) {
         stat = pred->status;
         if (stat == available) {
-            //TODO: uncomment the below code later to reclaim space
-            /*mlock->prev = NULL;
-            free(pred);*/
-            mlock->prev = pred;
+            mlock->prev = NULL;
+            free(pred);
+            //mlock->prev = pred;
             // lock acquired
             return true;
         }
@@ -132,10 +130,9 @@ bool AcquireQLock(qlock_t *mlock)
 
 
         if (stat == available) {
-            //TODO: uncomment the below code later to reclaim space
-            /*mlock->prev = NULL;
-            free(pred);*/
-            mlock->prev = pred;
+            mlock->prev = NULL;
+            free(pred);
+            //mlock->prev = pred;
             // lock acquired
             return true;
         }
