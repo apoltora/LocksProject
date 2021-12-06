@@ -3,7 +3,7 @@
  * Creating queue lock
  * 
  * Use this command to compile:
- * clang -std=c11 -lpthread -o queue mb1_queue.c
+ * clang -lpthread -o queue mb1_queue.c
  * Then to run:
  * ./queue
  * 
