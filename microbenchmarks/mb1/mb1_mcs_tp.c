@@ -5,7 +5,7 @@
  * This lock has two additional states TIMED_OUT and REMOVED when compared to *original MCS Queue lock.
  * 
  * Use this command to compile:
- * clang -std=c11 -lpthread -o mcs_tp mb1_mcs_tp.c
+ * clang -lpthread -o mcs_tp mb1_mcs_tp.c
  * Then to run:
  * ./mcs_tp
  * 
@@ -36,12 +36,12 @@
 // How long should a thread keep spinning while waiting in the queue ? 
 // Also known as PATIENCE INTERVAL...
 // After this timeout has reached the thread can perform a yield or execute an alternate execution path... In our code we perform yield...
-#define PATIENCE 5 // in seconds // time of 4 critical sections
+#define PATIENCE 6000000000 // 6 seconds // time of 4 critical sections
 
 // maximum time taken to execute the critical section...lock holder is preempted if it is holding the lock more than this time
 // yield now to help the lock holder to get rescheduled
 // measure the time of critical section and then use that time here
-#define MAX_CS_TIME 1.25 // in seconds
+#define MAX_CS_TIME 1500000000 // 1.5 seconds
 
 
 
@@ -51,7 +51,7 @@
 
 // the approx time it takes for a thread to see a timestamp from another thread
 // keep this value slightly more than the exact upd_delay to provide some tolerance and to avoid false-positive in detecting preempted threads
-#define UPD_DELAY 0.0001 // 100 microsecs // 0.00005 - 50 microseconds
+#define UPD_DELAY 100000 // 100 microsecs 
 
 
 // useful performance counters for observations...
@@ -84,8 +84,8 @@ typedef struct q_node {
 
     volatile qnode_state _Atomic state;
     char padding1[CACHE_LINE_SIZE - sizeof(qnode_state)]; //padding
-    volatile double published_time;
-    char padding2[CACHE_LINE_SIZE - sizeof(double)]; //padding
+    volatile long published_time;
+    char padding2[CACHE_LINE_SIZE - sizeof(long)]; //padding
     struct q_node* volatile next;
 
 } qnode_t;
@@ -95,8 +95,8 @@ typedef struct q_node {
 typedef struct q_lock {
 
     // start time of the critical section
-    volatile double crit_sec_start_time;
-    char padding3[CACHE_LINE_SIZE - sizeof(double)]; //padding
+    volatile long crit_sec_start_time;
+    char padding3[CACHE_LINE_SIZE - sizeof(long)]; //padding
     qnode_t* volatile _Atomic glock;
 
 } q_lock_t;
@@ -108,27 +108,45 @@ q_lock_t lock;
 
 int x;
 
-//function to return current time
-double get_time_func()
+//function to return current wall clock time in nanosecs
+long get_wall_clock_time_nanos()
 {
     struct timespec t0;
-    double time_in_sec;
+    long time_in_nano_sec;
 
-    if(timespec_get(&t0, TIME_UTC) != TIME_UTC) {
+   /* if(timespec_get(&t0, TIME_UTC) != TIME_UTC) {
         printf("Error in calling timespec_get\n");
+        exit(EXIT_FAILURE);
+    }*/
+
+    timespec_get(&t0, TIME_UTC);  
+
+    time_in_nano_sec = (((long)t0.tv_sec * 1000000000L) + t0.tv_nsec);
+
+    return time_in_nano_sec; // time_in_nano_seconds
+}
+
+
+//function to return thread specific clock time in nanosecs
+long get_thread_time_nanos()
+{
+    struct timespec t0;
+    long time_in_nano_sec;
+
+    if(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &t0) == -1)
+    {
+        printf("Error in calling clock_gettime\n");
         exit(EXIT_FAILURE);
     }
 
-  //  time_in_sec = ((double) t0.tv_sec);
-time_in_sec = ( ((double) t0.tv_sec) + ( ((double) t0.tv_nsec)/1000000000L ));
-    
-    return time_in_sec; // time_in_seconds
+    time_in_nano_sec = (((long)t0.tv_sec * 1000000000L) + t0.tv_nsec);
+
+    return time_in_nano_sec; // time_in_nano_seconds
+
 }
 
 
 int AcquireQLock(qnode_t *mlock) {
-
-    double acquire_start_time = get_time_func();
 
     qnode_state temp_state = TIMED_OUT;
     // If current status is timeout...then make it to waiting
@@ -161,7 +179,7 @@ int AcquireQLock(qnode_t *mlock) {
         // no thread in the queue lock yet...lock acquired...
         if (prev_glock == NULL)
         {
-            lock.crit_sec_start_time = get_time_func();
+            lock.crit_sec_start_time = get_wall_clock_time_nanos();
             return 1;
         }
         else
@@ -171,6 +189,7 @@ int AcquireQLock(qnode_t *mlock) {
 
     }
 
+    long acquire_start_time = get_thread_time_nanos();
 
     while(1)
     {   
@@ -178,11 +197,14 @@ int AcquireQLock(qnode_t *mlock) {
         while(mlock->state == WAITING)
         {
             // publish your time...to indicate that the thread is not preempted.
-            mlock->published_time = get_time_func();
+            mlock->published_time = get_wall_clock_time_nanos();
 
             // keep looping in this while loop wait until patience time
-            if(!(get_time_func() > (acquire_start_time + PATIENCE)))
+        
+            if(!(get_thread_time_nanos() > (acquire_start_time + PATIENCE)))
+            {
                 continue;
+            }
 
 
             /** END OF PATIENCE **/
@@ -214,7 +236,7 @@ int AcquireQLock(qnode_t *mlock) {
         if(mlock->state == AVAILABLE)
         {
             //lock acquired
-            lock.crit_sec_start_time = get_time_func();
+            lock.crit_sec_start_time = get_wall_clock_time_nanos();
             return 1;
         }
 
@@ -227,7 +249,7 @@ int AcquireQLock(qnode_t *mlock) {
               //  printf("I am in REMOVED \n");
             //    assert(0);
 
-            if(get_time_func() > (lock.crit_sec_start_time + MAX_CS_TIME))
+            if(get_wall_clock_time_nanos() > (lock.crit_sec_start_time + MAX_CS_TIME + UPD_DELAY))
             {
                 lock_holder_progress_yield_count++;
                 sched_yield();
@@ -298,12 +320,12 @@ void ReleaseQLock(qnode_t *mlock) {
         if(next_node->state == WAITING)
         {
             temp_state = WAITING;
-            double next_node_published_time;
+            long next_node_published_time;
             next_node_published_time = next_node->published_time;
 
             // check if successor is not preempted... if so handover the lock...
 
-            if((get_time_func() <= (next_node_published_time + UPD_DELAY)))
+            if((get_wall_clock_time_nanos() <= (next_node_published_time + UPD_DELAY)))
             {
 
                 if(atomic_compare_exchange_weak(&(next_node->state), &temp_state, AVAILABLE))
@@ -440,9 +462,9 @@ void *operation(void *vargp) {
           // printf(" timeout retry....ret_val == -2 \n");
 
             //some delay before doing a retry 
-            /*long delay = 1000000000;
+            long delay = 1000000000; //1000000000;
             while(delay)
-                delay--;*/
+                delay--;
         }
 
         else // returned 1... lock acquired...
@@ -457,24 +479,20 @@ void *operation(void *vargp) {
 
    // printf("Lock obtained \n");
 
-    //double time1 = get_time_func();
+ //   long time1 = get_thread_time_nanos();
     x++;
 
     long delay = 1000000000;
     while(delay)
         delay--;
 
-    //double time2 = get_time_func();
+    //  long time2 = get_thread_time_nanos();
 
-    //double time_diff = time2-time1;
+    //  long time_diff = time2-time1;
 
- //printf("Time1 %lf \n", time1);
-   // printf("Time2 %lf \n", time2);
-
-   // printf("Time diff %lf \n", time_diff);
+    // printf("critical section time : %lf\n\n\n", ((double) time_diff/1000000000));
 
     /* End of CRITICAL SECTION */
-
 
     ReleaseQLock(mylock);
 
@@ -495,6 +513,8 @@ int main() {
     pthread_t threads[NUM_THREADS];
     int i, j;
 
+    long time_init = get_wall_clock_time_nanos();
+
     for (i = 0; i < NUM_THREADS; i++) {
         pthread_create(&threads[i], NULL, operation, NULL);    // make the threads run the operation function
     }
@@ -503,7 +523,17 @@ int main() {
         pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
     }
 
-   // printf("The value of x is : %d\n", x);
+    long time_final= get_wall_clock_time_nanos();
+
+    long time_diff = time_final - time_init;
+
+
+    printf("********* RUNTIME STATS *********\n\n");
+
+    printf("The value of x is : %d\n", x);
+
+    printf("Total RUNTIME : %lf\n\n", ((double) time_diff/1000000000));
+
     printf("Predicted Preemptions : %d\n\n", preempted_perf_counter);
 
     printf("not_preempted_lock_release_success : %d\n\n", not_preempted_lock_release_success);
@@ -521,6 +551,8 @@ int main() {
     printf("qnodes_rejoined_after_timeout_success: %d\n\n", qnodes_rejoined_after_timeout_success);
 
     printf("sched_yield calls to help preempted lock holder to progress : %d\n\n", lock_holder_progress_yield_count);
+
+    printf("***************************\n\n");
 
     return 0;
 

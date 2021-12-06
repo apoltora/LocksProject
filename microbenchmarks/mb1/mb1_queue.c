@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdatomic.h>
+#include <time.h>
 
 #define NUM_THREADS 8
 #define CACHE_LINE_SIZE 64 
@@ -38,6 +39,26 @@ typedef struct qlock {
 qlock_t* volatile _Atomic glock;
 
 int x;
+
+
+//function to return current wall clock time in nanosecs
+long get_wall_clock_time_nanos()
+{
+    struct timespec t0;
+    long time_in_nano_sec;
+
+   /* if(timespec_get(&t0, TIME_UTC) != TIME_UTC) {
+        printf("Error in calling timespec_get\n");
+        exit(EXIT_FAILURE);
+    }*/
+
+    timespec_get(&t0, TIME_UTC);  
+
+    time_in_nano_sec = (((long)t0.tv_sec * 1000000000L) + t0.tv_nsec);
+
+    return time_in_nano_sec; // time_in_nano_seconds
+}
+
 
 qlock_t *AcquireQLock() {
 
@@ -69,9 +90,9 @@ qlock_t *AcquireQLock() {
 
     mlock->state = LOCKED;
     prev_glock->next = mlock;
-    printf("I am here\n");
 
     while (mlock->state == LOCKED); // SPIN HERE...
+    //printf("I am here\n");
 
     return mlock;
 
@@ -114,9 +135,9 @@ void *operation(void *vargp) {
     // place an end timer here
     x++;
 
-   // long delay = 1000000000;
-    //while(delay)
-      //  delay--;
+    long delay = 1000000000;
+    while(delay)
+        delay--;
 
     ReleaseQLock(mylock);
 
@@ -134,6 +155,8 @@ int main() {
     pthread_t threads[NUM_THREADS];
     int i, j;
 
+    long time_init = get_wall_clock_time_nanos();
+
     for (i = 0; i < NUM_THREADS; i++) {
         pthread_create(&threads[i], NULL, operation, NULL);    // make the threads run the operation function
     }
@@ -142,7 +165,17 @@ int main() {
         pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
     }
 
+    long time_final= get_wall_clock_time_nanos();
+
+    long time_diff = time_final - time_init;
+
+
+    printf("********* RUNTIME STATS *********\n\n");
+
     printf("The value of x is : %d\n", x);
+
+    printf("Total RUNTIME : %lf\n\n", ((double) time_diff/1000000000));
+    
     return 0;
 
 }
