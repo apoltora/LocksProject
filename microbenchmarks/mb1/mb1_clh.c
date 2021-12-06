@@ -4,7 +4,7 @@
  * Check out visual on how this lock works here: https://classes.engineering.wustl.edu/cse539/web/lectures/locks.pdf
  * 
  * Use this command to compile:
- * clang -std=c11 -lpthread -o clh mb1_clh.c
+ * clang -lpthread -o clh mb1_clh.c
  * Then to run:
  * ./clh
  * 
@@ -23,7 +23,7 @@
 #include <stdint.h>
 #include <stdatomic.h>
 
-#define NUM_THREADS 8
+#define NUM_THREADS 25
 #define CACHE_LINE_SIZE 64 
 
 typedef enum { LOCKED, UNLOCKED } qlock_state;
@@ -39,6 +39,24 @@ typedef struct qlock {
 qlock_t* volatile _Atomic glock;
 
 int x;
+
+//function to return current wall clock time in nanosecs
+long get_wall_clock_time_nanos()
+{
+    struct timespec t0;
+    long time_in_nano_sec;
+
+   /* if(timespec_get(&t0, TIME_UTC) != TIME_UTC) {
+        printf("Error in calling timespec_get\n");
+        exit(EXIT_FAILURE);
+    }*/
+
+    timespec_get(&t0, TIME_UTC);  
+
+    time_in_nano_sec = (((long)t0.tv_sec * 1000000000L) + t0.tv_nsec);
+
+    return time_in_nano_sec; // time_in_nano_seconds
+}
 
 qlock_t *AcquireQLock() {
 
@@ -86,15 +104,27 @@ void *operation(void *vargp) {
    
     mylock = AcquireQLock();
 
+    /**** CRITICAL SECTION *****/
+
     // place an end timer here
     x++;
-    long delay = 1000000000;
+    long delay = 100000000;
     while(delay)
         delay--;
 
+    /**** END OF CRITICAL SECTION *****/    
+
     ReleaseQLock(mylock);
 
-    // place an end timer here
+
+    /* Start of NON-CRITICAL SECTION */
+
+    // 10 times the delay of critical section //
+    delay = 1000000000;
+    while(delay)
+        delay--;
+
+    /* End of NON-CRITICAL SECTION */
     return vargp;
 }
 
@@ -113,7 +143,7 @@ int main() {
     qlock_t *prev_glock = glock;
     atomic_compare_exchange_weak(&glock, &prev_glock, glock_init);
 
-
+    long time_init = get_wall_clock_time_nanos();
 
     pthread_t threads[NUM_THREADS];
     int i, j;
@@ -126,7 +156,12 @@ int main() {
         pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
     }
 
+    long time_final= get_wall_clock_time_nanos();
+
+    long time_diff = time_final - time_init;
+    
     printf("The value of x is : %d\n", x);
+    printf("Total RUNTIME : %lf\n\n", ((double) time_diff/1000000000));
 
     // free the final tail node of glock
     free(glock);

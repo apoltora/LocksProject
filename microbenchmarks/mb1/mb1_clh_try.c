@@ -4,7 +4,7 @@
  * 
  * 
  * Use this command to compile:
- * clang -std=c11 -lpthread -o clh_try mb1_clh_try.c
+ * clang -lpthread -o clh_try mb1_clh_try.c
  * Then to run:
  * ./clh_try
  * 
@@ -24,11 +24,11 @@
 #include <stdatomic.h>
 #include <sched.h>
 
-#define NUM_THREADS 8
+#define NUM_THREADS 25
 #define CACHE_LINE_SIZE 64 
 
 // Timeout threshold // TODO: tune this value
-#define T 0.0005 // 500 microsecs  
+#define PATIENCE 600000000 // 0.6 seconds // time of 4 critical sections
 
 
 typedef enum {waiting,      // lock is held
@@ -54,17 +54,47 @@ qlock_t* volatile _Atomic glock;
 int x;
 
 
-// TODO: complete this
-double get_time_func()
+
+//function to return current wall clock time in nanosecs
+long get_wall_clock_time_nanos()
 {
+    struct timespec t0;
+    long time_in_nano_sec;
 
+   /* if(timespec_get(&t0, TIME_UTC) != TIME_UTC) {
+        printf("Error in calling timespec_get\n");
+        exit(EXIT_FAILURE);
+    }*/
 
+    timespec_get(&t0, TIME_UTC);  
+
+    time_in_nano_sec = (((long)t0.tv_sec * 1000000000L) + t0.tv_nsec);
+
+    return time_in_nano_sec; // time_in_nano_seconds
 }
 
 
+//function to return thread specific clock time in nanosecs
+long get_thread_time_nanos()
+{
+    struct timespec t0;
+    long time_in_nano_sec;
+
+    if(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &t0) == -1)
+    {
+        printf("Error in calling clock_gettime\n");
+        exit(EXIT_FAILURE);
+    }
+
+    time_in_nano_sec = (((long)t0.tv_sec * 1000000000L) + t0.tv_nsec);
+
+    return time_in_nano_sec; // time_in_nano_seconds
+
+}
+
 bool AcquireQLock(qlock_t *mlock) 
 {
-    double start_time;
+    long start_time;
     qlock_state stat;
 
     mlock->status = waiting;
@@ -90,10 +120,10 @@ bool AcquireQLock(qlock_t *mlock)
         return true;
     }
     
-    start_time = get_time_func();       
+    start_time = get_thread_time_nanos();       
 
     // execute this while loop until the node times out
-    while (get_time_func() - start_time < T) {
+    while (get_thread_time_nanos() - start_time < PATIENCE) {
         stat = pred->status;
         if (stat == available) {
             mlock->prev = NULL;
@@ -206,7 +236,6 @@ void ReleaseQLock(qlock_t *mlock)
 
 
 void *operation(void *vargp) {
-    // place a start timer here
     qlock_t *mylock;
     mylock = (qlock_t *) malloc(sizeof(qlock_t));
 
@@ -233,13 +262,23 @@ void *operation(void *vargp) {
 
     // place an end timer here
     x++;
-    long delay = 1000000000;
+    long delay = 100000000;
     while(delay)
         delay--;
 
     ReleaseQLock(mylock);
 
-    // place an end timer here
+
+    /* Start of NON-CRITICAL SECTION */
+
+    // 10 times the delay of critical section //
+    delay = 1000000000;
+    while(delay)
+        delay--;
+
+    /* End of NON-CRITICAL SECTION */  
+
+
     return vargp;
 }
 
@@ -263,6 +302,8 @@ int main() {
     pthread_t threads[NUM_THREADS];
     int i, j;
 
+    long time_init = get_wall_clock_time_nanos();
+
     for (i = 0; i < NUM_THREADS; i++) {
         pthread_create(&threads[i], NULL, operation, NULL);    // make the threads run the operation function
     }
@@ -271,7 +312,12 @@ int main() {
         pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
     }
 
+    long time_final= get_wall_clock_time_nanos();
+
+    long time_diff = time_final - time_init;
+    
     printf("The value of x is : %d\n", x);
+    printf("Total RUNTIME : %lf\n\n", ((double) time_diff/1000000000));
 
     // free the final tail node of glock
     free(glock);
