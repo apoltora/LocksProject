@@ -14,6 +14,22 @@
  *
  */
 
+
+/*
+
+TODO:
+
+check both the sched_yield() calls.....commented some hints wherever it is called in the code
+
+not sure whether premption is actually happening in both mcs_tp and mcs codes...should possibily change the code such that it increases cache misses in the critical section (also in non-critical section??)
+
+maybe comment out all the perf counters and check the true performance
+
+regarding correctness of perf counters: is atomic increment needed for perf counters ?
+
+*/
+
+
 #include <pthread.h>
 #include <assert.h>
 #include <ctype.h>
@@ -26,22 +42,22 @@
 #include <time.h>
 #include <sched.h>
 
-#define NUM_THREADS 20
+#define NUM_THREADS 25
 
 // Limit on the number of nodes the lock holder scan before releasing the lock 
-#define MAX_NODES_TO_SCAN 20
+#define MAX_NODES_TO_SCAN 8
 
 #define CACHE_LINE_SIZE 64 
 
 // How long should a thread keep spinning while waiting in the queue ? 
 // Also known as PATIENCE INTERVAL...
 // After this timeout has reached the thread can perform a yield or execute an alternate execution path... In our code we perform yield...
-#define PATIENCE 6000000000 // 6 seconds // time of 4 critical sections
+#define PATIENCE 600000000 // 0.6 seconds // time of 4 critical sections
 
 // maximum time taken to execute the critical section...lock holder is preempted if it is holding the lock more than this time
 // yield now to help the lock holder to get rescheduled
 // measure the time of critical section and then use that time here
-#define MAX_CS_TIME 1500000000 // 1.5 seconds
+#define MAX_CS_TIME 150000000 // 0.15 seconds
 
 
 
@@ -223,6 +239,7 @@ int AcquireQLock(qnode_t *mlock) {
             timeout_yield_count++;
 
             // As we have timed out... perform a yield...
+            //? Is this being done more frequently than it is actually needed ?
             sched_yield();
             
 
@@ -244,17 +261,12 @@ int AcquireQLock(qnode_t *mlock) {
         // lock holder has removed the node
         else if(mlock->state == REMOVED)
         {
-            // check whether lock holder is preempted... perform a yield...
-            // help lock holder to make progress
-              //  printf("I am in REMOVED \n");
-            //    assert(0);
-
+            //? Is this really useful ?
             if(get_wall_clock_time_nanos() > (lock.crit_sec_start_time + MAX_CS_TIME + UPD_DELAY))
             {
                 lock_holder_progress_yield_count++;
                 sched_yield();
             }
-            //mlock->last_lock = lock.glock;   
 
             // lock acquire failed because the thread was preempted/timed_out when the lock head tried to handover the lock 
             return -1;
@@ -438,20 +450,16 @@ void *operation(void *vargp) {
 
     while(1)
     {
+        if(ret_val == 1) // returned 1... lock acquired...
+            break;
+       
+       /* 
+        Other possibilities are:
         if(ret_val == -1)
         {
-            // TODO: try removing free and calloc from here and make sure they dont break correctness
-
-            // reclaim the node
-            free(mylock);
-
-            // allocate new space for new mylock
-            mylock = (qnode_t *) calloc(1, sizeof(qnode_t));
-            mylock->state = WAITING;
-            mylock->next = NULL;
-
-           // printf(" preemption retry.....ret_val == -1 \n");
-
+            // Node was removed by lock holder due to preemption or timeout
+            // Nodes state is REMOVED as it reached here.
+            // retry is done below.... do nothing here.
         }
 
         else if(ret_val == -2)
@@ -459,18 +467,10 @@ void *operation(void *vargp) {
             // node TIMED_OUT...
             // retry acquire and try to rejoin the queue
             // retry is done below.... do nothing here.
-          // printf(" timeout retry....ret_val == -2 \n");
+        } 
+      */
 
-            //some delay before doing a retry 
-            long delay = 1000000000; //1000000000;
-            while(delay)
-                delay--;
-        }
-
-        else // returned 1... lock acquired...
-            break;
-
-        // retry acquire...
+        // retry acquire for the remaining cases...
         ret_val = AcquireQLock(mylock);
     }
 
@@ -482,9 +482,10 @@ void *operation(void *vargp) {
  //   long time1 = get_thread_time_nanos();
     x++;
 
-    long delay = 1000000000;
+    long delay = 100000000;
     while(delay)
         delay--;
+   
 
     //  long time2 = get_thread_time_nanos();
 
@@ -498,6 +499,17 @@ void *operation(void *vargp) {
 
     // free the mylock as the job is over here...
     free(mylock);
+
+
+    /* Start of NON-CRITICAL SECTION */
+
+    // 10 times the delay of critical section //
+    delay = 1000000000;
+    while(delay)
+        delay--;
+
+    /* End of NON-CRITICAL SECTION */    
+
 
     return vargp;
 }
@@ -534,21 +546,21 @@ int main() {
 
     printf("Total RUNTIME : %lf\n\n", ((double) time_diff/1000000000));
 
-    printf("Predicted Preemptions : %d\n\n", preempted_perf_counter);
+    printf("Node removed by Lock holder due to possibility of a Preemption : %d\n\n", preempted_perf_counter);
 
-    printf("not_preempted_lock_release_success : %d\n\n", not_preempted_lock_release_success);
+    printf("Lock holder released the lock to these number of nodes knowing that it is not preempted : %d\n\n", not_preempted_lock_release_success);
 
-    printf("lock_release_by_last_node_in_queue : %d\n\n", release_by_last_node_in_queue);
+    printf("lock released by last node in the queue : %d\n\n", release_by_last_node_in_queue);
 
-    printf("forced_lock_release_second_while_loop : %d\n\n", force_lock_release_second_while_loop);
-
-    printf("timed_out_nodes_removed_by_lock_holder : %d\n\n", timed_out_nodes_removed_by_lock_holder);
+    printf("forced lock release in second while loop : %d\n\n", force_lock_release_second_while_loop);
 
     printf("Total timeouts occurred: %d\n\n", total_timeout_occurrences);
 
-    printf("sched_yield calls due to timeouts : %d\n\n", timeout_yield_count);
+    printf("timed out nodes removed by lock holder : %d\n\n", timed_out_nodes_removed_by_lock_holder);
 
-    printf("qnodes_rejoined_after_timeout_success: %d\n\n", qnodes_rejoined_after_timeout_success);
+    printf("sched yield calls due to timeouts : %d\n\n", timeout_yield_count);
+
+    printf("number of nodes which rejoined successfully after retry (after timeout) : %d\n\n", qnodes_rejoined_after_timeout_success);
 
     printf("sched_yield calls to help preempted lock holder to progress : %d\n\n", lock_holder_progress_yield_count);
 

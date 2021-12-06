@@ -23,7 +23,7 @@
 #include <stdatomic.h>
 #include <time.h>
 
-#define NUM_THREADS 8
+#define NUM_THREADS 25
 #define CACHE_LINE_SIZE 64 
 
 typedef enum { LOCKED, UNLOCKED } qlock_state;
@@ -127,21 +127,33 @@ void ReleaseQLock(qlock_t *mlock) {
 
 
 void *operation(void *vargp) {
-    // place a start timer here
+
     qlock_t *mylock;
    
     mylock = AcquireQLock();
 
-    // place an end timer here
+    /* Start of CRITICAL SECTION */
     x++;
 
-    long delay = 1000000000;
+    long delay = 100000000;
     while(delay)
         delay--;
+    
+
+    /* End of CRITICAL SECTION */
 
     ReleaseQLock(mylock);
 
-    // place an end timer here
+
+    /* Start of NON-CRITICAL SECTION */
+
+    // 10 times the delay of critical section //
+    delay = 1000000000;
+    while(delay)
+        delay--;
+
+    /* End of NON-CRITICAL SECTION */    
+
     return vargp;
 }
 
