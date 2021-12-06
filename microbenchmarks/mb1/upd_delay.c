@@ -23,13 +23,13 @@
 #include <stdatomic.h>
 #include <time.h>
 
-#define NUM_THREADS 16
+#define NUM_THREADS 20
 
 volatile int x;
 volatile int y;
 
-volatile double timestamp1;
-volatile double timestamp2;
+volatile long timestamp1;
+volatile long timestamp2;
 
 
 typedef struct {
@@ -37,23 +37,23 @@ typedef struct {
 } WorkerArgs;
 
 
-double get_time_func()
+long get_wall_clock_time_nanos()
 {
     struct timespec t0;
-    double time_in_sec;
+    long time_in_nano_sec;
 
-    if(timespec_get(&t0, TIME_UTC) != TIME_UTC) {
+   /* if(timespec_get(&t0, TIME_UTC) != TIME_UTC) {
         printf("Error in calling timespec_get\n");
         exit(EXIT_FAILURE);
-    }
+    }*/
 
-//   time_in_sec = ((double) t0.tv_sec);
+    timespec_get(&t0, TIME_UTC);  
 
-    //? Will we need to do this? and is this correct ?
-time_in_sec = ( ((double) t0.tv_sec) + ( ((double) t0.tv_nsec)/1000000000L ));
-    
-    return time_in_sec; // time_in_seconds
+    time_in_nano_sec = (((long)t0.tv_sec * 1000000000L) + t0.tv_nsec);
+
+    return time_in_nano_sec; // time_in_nano_seconds
 }
+
 
 
 void *operation(void *threadArgs) {
@@ -67,14 +67,14 @@ void *operation(void *threadArgs) {
     if(tid == 0)
     {
         while(x == 0);
-        timestamp2 = get_time_func();
+        timestamp2 = get_wall_clock_time_nanos();
 
     }
 
     if(tid == 4)
     {
         x++;
-        timestamp1 = get_time_func();
+        timestamp1 = get_wall_clock_time_nanos();
 
     }
 
@@ -121,13 +121,13 @@ int main() {
     //printf("The value of x is : %d\n", x);
 
 
-    double time_diff;
+    long time_diff;
     time_diff = (timestamp2 - timestamp1);
 
-    printf("\n\n\ntimestamp2 %lf \n", timestamp2);
-    printf("timestamp1 %lf \n", timestamp1);
+    printf("\n\n\ntimestamp2 %ld \n", timestamp2);
+    printf("timestamp1 %ld \n", timestamp1);
 
-    printf("time_diff %lf \n\n\n", time_diff);
+    printf("time_diff : %lf secs\n\n\n", ((double) time_diff/1000000000));
 
     return 0;
 }
