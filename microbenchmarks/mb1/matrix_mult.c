@@ -8,15 +8,11 @@
  *
  */
 
-#include <pthread.h>
-#include <assert.h>
 #include <ctype.h>
-#include <stdbool.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <sched.h>
 
 
 #define A_ROWS 2
