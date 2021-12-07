@@ -86,15 +86,11 @@ void print_array(int *array, int size) {
 int main() {
 
     // initialize the arrays here
-    int A[A_ROWS][A_COLS];
-    int B[B_ROWS][B_COLS];
-
-    A[0][0] = 1; A[0][1] = 2; A[0][2] = 3;
-    A[1][0] = 4; A[1][1] = 5; A[1][2] = 6;
-
-    B[0][0] = 10; B[0][1] = 11;
-    B[1][0] = 20; B[1][1] = 21;
-    B[2][0] = 30; B[2][1] = 31;
+    int A[A_ROWS][A_COLS] = {{1, 2, 3},
+                             {4, 5, 6}};
+    int B[B_ROWS][B_COLS] = {{10, 11},
+                             {20, 21},
+                             {30, 31}};;
 
     // calling for matrix multiplication to happen
     int *C = matrix_multiplication(A,B,A_ROWS,A_COLS,B_ROWS,B_COLS);
