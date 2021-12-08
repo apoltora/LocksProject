@@ -3,7 +3,7 @@
  * Using test-and-set assembly instruction to create lock
  * 
  * Use this command to compile:
- * gcc -o ts -lpthread mb1_ts.c mb1_ts.s
+ * clang -o ts -lpthread mb1_ts.c mb1_ts.s
  * Then to run:
  * ./ts
  * 
@@ -20,7 +20,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define NUM_THREADS 8
+#define NUM_THREADS 32
+#define MAX_CRIT_ITERS 1
+#define MAX_NON_CRIT_ITERS 1
 
 extern void Lock(volatile int *lock_var);
 extern void Unlock(volatile int *lock_var);
@@ -28,17 +30,77 @@ extern void Unlock(volatile int *lock_var);
 volatile int LOCK;
 volatile int x;
 
+//function to return current wall clock time in nanosecs
+long get_wall_clock_time_nanos()
+{
+    struct timespec t0;
+    long time_in_nano_sec;
+
+   /* if(timespec_get(&t0, TIME_UTC) != TIME_UTC) {
+        printf("Error in calling timespec_get\n");
+        exit(EXIT_FAILURE);
+    }*/
+
+    timespec_get(&t0, TIME_UTC);  
+
+    time_in_nano_sec = (((long)t0.tv_sec * 1000000000L) + t0.tv_nsec);
+
+    return time_in_nano_sec; // time_in_nano_seconds
+}
+
 void *operation(void *vargp) {
-    // place a start timer here
+    /*
     Lock(&LOCK);
-    // place an end timer here
     x++;
-    /* delay added here to spend some time in critical section*/
+    // delay added here to spend some time in critical section
     int delay = 100000;
     while(delay)
         delay--;
-    Unlock(&LOCK);
-    // place an end timer here
+    Unlock(&LOCK);*/
+    
+    int crit_sec_executed = 0;
+    int non_crit_sec_executed = 0;
+    
+    while(non_crit_sec_executed < MAX_NON_CRIT_ITERS || crit_sec_executed < MAX_CRIT_ITERS)
+    {
+    
+        if(crit_sec_executed < MAX_CRIT_ITERS)
+        {
+            Lock(&LOCK);
+
+            /**** CRITICAL SECTION *****/
+
+            // place an end timer here
+            //x++;
+            long delay = 100000000;
+            while(delay)
+                delay--;
+
+            /**** END OF CRITICAL SECTION *****/    
+
+            crit_sec_executed++;
+            Unlock(&LOCK);
+        }
+
+
+        if(non_crit_sec_executed < MAX_NON_CRIT_ITERS)
+        {
+            /* Start of NON-CRITICAL SECTION */
+
+            // 1 times the delay of critical section //
+            long delay = 100000000;
+            while(delay)
+                delay--;
+
+            /* End of NON-CRITICAL SECTION */
+            non_crit_sec_executed++;
+
+        }
+
+    }
+
+    return vargp;
+
 }
 
 int main() {
@@ -47,13 +109,23 @@ int main() {
     pthread_t threads[NUM_THREADS];
     int i, j;
 
+    long time_init = get_wall_clock_time_nanos();
+
     for (i = 0; i < NUM_THREADS; i++) {
         pthread_create(&threads[i], NULL, operation, NULL);    // make the threads run the operation function
     }
     for (j = 0; j < NUM_THREADS; j++) {
         pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
     }
-    printf("value of x : %d\n",x);
+
+    long time_final= get_wall_clock_time_nanos();
+
+    long time_diff = time_final - time_init;
+    
+    printf("The value of x is : %d\n", x);
+    printf("Total RUNTIME : %lf\n\n", ((double) time_diff/1000000000));
+
+   
     return 0;
 }
 

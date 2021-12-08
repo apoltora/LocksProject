@@ -24,11 +24,14 @@
 #include <stdatomic.h>
 #include <sched.h>
 
-#define NUM_THREADS 25
+#define NUM_THREADS 32
 #define CACHE_LINE_SIZE 64 
 
 // Timeout threshold // TODO: tune this value
-#define PATIENCE 600000000 // 0.6 seconds // time of 4 critical sections
+#define PATIENCE 200000000 //time of 2 critical sections
+
+#define MAX_CRIT_ITERS 1
+#define MAX_NON_CRIT_ITERS 1
 
 
 typedef enum {waiting,      // lock is held
@@ -240,8 +243,12 @@ void *operation(void *vargp) {
     mylock = (qlock_t *) malloc(sizeof(qlock_t));
 
     bool acquire_status = true;
+
+    int crit_sec_executed = 0;
+    int non_crit_sec_executed = 0;
+
    
-    while(1)
+   /* while(1)
     {
         acquire_status = AcquireQLock(mylock);
 
@@ -256,27 +263,49 @@ void *operation(void *vargp) {
         }
 
 
+    }*/
+    while(non_crit_sec_executed < MAX_NON_CRIT_ITERS || crit_sec_executed < MAX_CRIT_ITERS)
+    {
+        if(crit_sec_executed < MAX_CRIT_ITERS)
+        {
+            acquire_status = AcquireQLock(mylock);
+
+            if(acquire_status)
+                crit_sec_executed++;
+            else
+                goto non_critical;
+
+
+            /**** CRITICAL SECTION *****/
+
+            // place an end timer here
+            //x++;
+            long delay = 100000000;
+            while(delay)
+                delay--;
+
+            /* End of CRITICAL SECTION */ 
+
+            ReleaseQLock(mylock);
+
+        }
+
+
+        non_critical:
+        if(non_crit_sec_executed < MAX_NON_CRIT_ITERS)
+        {
+            /* Start of NON-CRITICAL SECTION */
+
+            // 1 times the delay of critical section //
+            long delay = 100000000;
+            while(delay)
+                delay--;
+
+            /* End of NON-CRITICAL SECTION */  
+            non_crit_sec_executed++;
+        }
+
     }
-
-    /**** CRITICAL SECTION *****/
-
-    // place an end timer here
-    x++;
-    long delay = 100000000;
-    while(delay)
-        delay--;
-
-    ReleaseQLock(mylock);
-
-
-    /* Start of NON-CRITICAL SECTION */
-
-    // 10 times the delay of critical section //
-    delay = 1000000000;
-    while(delay)
-        delay--;
-
-    /* End of NON-CRITICAL SECTION */  
 
 
     return vargp;

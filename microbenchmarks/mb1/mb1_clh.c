@@ -23,8 +23,11 @@
 #include <stdint.h>
 #include <stdatomic.h>
 
-#define NUM_THREADS 25
+#define NUM_THREADS 32
 #define CACHE_LINE_SIZE 64 
+
+#define MAX_CRIT_ITERS 1
+#define MAX_NON_CRIT_ITERS 1
 
 typedef enum { LOCKED, UNLOCKED } qlock_state;
 
@@ -101,30 +104,49 @@ void ReleaseQLock(qlock_t *mlock) {
 void *operation(void *vargp) {
     // place a start timer here
     qlock_t *mylock;
-   
-    mylock = AcquireQLock();
+    int crit_sec_executed = 0;
+    int non_crit_sec_executed = 0;
+    
+    while(non_crit_sec_executed < MAX_NON_CRIT_ITERS || crit_sec_executed < MAX_CRIT_ITERS)
+    {
+    
+        if(crit_sec_executed < MAX_CRIT_ITERS)
+        {
+            mylock = AcquireQLock();
 
-    /**** CRITICAL SECTION *****/
+            /**** CRITICAL SECTION *****/
 
-    // place an end timer here
-    x++;
-    long delay = 100000000;
-    while(delay)
-        delay--;
+            // place an end timer here
+            //x++;
+            long delay = 100000000;
+            while(delay)
+                delay--;
 
-    /**** END OF CRITICAL SECTION *****/    
+            /**** END OF CRITICAL SECTION *****/    
 
-    ReleaseQLock(mylock);
+            crit_sec_executed++;
+            ReleaseQLock(mylock);
+        }
 
 
-    /* Start of NON-CRITICAL SECTION */
+        if(non_crit_sec_executed < MAX_NON_CRIT_ITERS)
+        {
+            /* Start of NON-CRITICAL SECTION */
 
-    // 10 times the delay of critical section //
-    delay = 1000000000;
-    while(delay)
-        delay--;
+            // 1 times the delay of critical section //
+            long delay = 100000000;
+            while(delay)
+                delay--;
 
-    /* End of NON-CRITICAL SECTION */
+            /* End of NON-CRITICAL SECTION */
+            non_crit_sec_executed++;
+
+        }
+
+
+    }
+
+
     return vargp;
 }
 
