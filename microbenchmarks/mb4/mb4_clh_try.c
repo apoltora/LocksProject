@@ -28,10 +28,10 @@
 #define CACHE_LINE_SIZE 64 
 
 // Timeout threshold // TODO: tune this value
-// critical section 0.0266 sec
-#define PATIENCE 79800000//slightly more time than 10 critical sections
+// critical section 0.000309 sec
+#define PATIENCE 3090000 //slightly more time than 10 critical sections
 
-#define MAX_CS_TIME 26600000 // critical section 0.0266 sec
+#define MAX_CS_TIME 309000 // critical section  sec -- convert to nanoseconds
 
 #define UPD_DELAY 100000 // 100 microsecs 
 

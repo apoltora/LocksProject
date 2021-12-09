@@ -1,5 +1,5 @@
 /**
- * This microbenchmark is a very simple add operation to a shared variable
+ * This microbenchmark is matrix multiplication to two global matrices
  * Using test-and-set assembly instruction to create lock
  * 
  * Use this command to compile:
