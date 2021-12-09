@@ -24,11 +24,11 @@
 #include <stdatomic.h>
 #include <sched.h>
 
-#define NUM_THREADS 32
+#define NUM_THREADS 4
 #define CACHE_LINE_SIZE 64 
 
 // Timeout threshold // TODO: tune this value
-#define PATIENCE 200000000 //time of 2 critical sections
+#define PATIENCE 260000000 //time of 2 critical sections
 
 #define MAX_CRIT_ITERS 1
 #define MAX_NON_CRIT_ITERS 1
