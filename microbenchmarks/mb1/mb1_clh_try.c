@@ -28,6 +28,7 @@
 #define CACHE_LINE_SIZE 64 
 
 // Timeout threshold // TODO: tune this value
+// critical section 0.13 sec
 #define PATIENCE 260000000 //time of 2 critical sections
 
 #define MAX_CRIT_ITERS 1
