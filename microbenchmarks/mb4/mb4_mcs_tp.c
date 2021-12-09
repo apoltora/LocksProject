@@ -5,7 +5,7 @@
  * This lock has two additional states TIMED_OUT and REMOVED when compared to *original MCS Queue lock.
  * 
  * Use this command to compile:
- * clang -lpthread -o mcs_tp mb3_mcs_tp.c
+ * clang -lpthread -o mcs_tp mb4_mcs_tp.c
  * Then to run:
  * ./mcs_tp
  * 
@@ -72,6 +72,9 @@ regarding correctness of perf counters: is atomic increment needed for perf coun
 
 #define  TIME_TO_REMOVE_A_NODE 1260 //1260 ns
 
+#define ROW_SIZE 20
+#define COL_SIZE 20
+
 // useful performance counters for observations...
 
 /*volatile int preempted_perf_counter = 0;
@@ -127,6 +130,9 @@ q_lock_t lock;
 
 
 volatile long x[ARRAY_SIZE];
+
+int *global_matrix_A;
+int *global_matrix_B;
 
 void initialize_array(volatile long *array) {
     int i;
@@ -491,13 +497,9 @@ void *operation(void *vargp) {
 
     /* Start of CRITICAL SECTION */
 
-    int i;
-    for (i = 0; i< ARRAY_SIZE; i++) {
-        if(x[i] != i)
-            x[i] = i;
-        else
-            x[i] = 0;    
-    }    
+    // call matrix multiplication to be done on 20x20 global matrices
+    matrix_multiplication(global_matrix_A,global_matrix_B,ROW_SIZE,COL_SIZE,ROW_SIZE,COL_SIZE);
+
 
 
     /* End of CRITICAL SECTION */
@@ -511,6 +513,19 @@ void *operation(void *vargp) {
     return vargp;
 }
 
+/**
+  * Initialize matrix; store whatever index it is at at that point
+  * Return pointer to the matrix
+  */
+int *initialize_matrix(int rows, int cols) {
+    int *matrix = (int*)malloc(sizeof(int)*rows*cols);
+
+    int i;
+    for (i = 0; i < rows * cols; i++) {
+        matrix[i] = i;
+    }
+    return matrix;
+}
 
 int main() {
 
@@ -523,6 +538,10 @@ int main() {
 
     //init array
     initialize_array(x);
+
+    // initialize arrays to be used in the critical section
+    global_matrix_A = initialize_matrix(ROW_SIZE, COL_SIZE);
+    global_matrix_B = initialize_matrix(ROW_SIZE, COL_SIZE);
 
     long time_init = get_wall_clock_time_nanos();
 

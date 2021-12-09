@@ -4,7 +4,7 @@
  * 
  * 
  * Use this command to compile:
- * clang -lpthread -o clh_try mb3_clh_try.c
+ * clang -lpthread -o clh_try mb4_clh_try.c
  * Then to run:
  * ./clh_try
  * 
@@ -37,13 +37,17 @@
 
 #define UPD_DELAY 100000 // 100 microsecs 
 
+#define ROW_SIZE 20
+#define COL_SIZE 20
+
 volatile long x[ARRAY_SIZE];
 
 volatile int lock_holder_preemption_yield = 0;
 
 volatile int num_timeouts = 0;
 
-
+int *global_matrix_A;
+int *global_matrix_B;
 
 void initialize_array(volatile long *array) {
     int i;
@@ -309,13 +313,9 @@ void *operation(void *vargp) {
     while(delay)
         delay--;*/
 
-    int i;
-    for (i = 0; i< ARRAY_SIZE; i++) {
-        if(x[i] != i)
-            x[i] = i;
-        else
-            x[i] = 0;    
-    }    
+    // call matrix multiplication to be done on 20x20 global matrices
+    matrix_multiplication(global_matrix_A,global_matrix_B,ROW_SIZE,COL_SIZE,ROW_SIZE,COL_SIZE);
+
 
     /* End of CRITICAL SECTION */ 
 
@@ -325,7 +325,19 @@ void *operation(void *vargp) {
     return vargp;
 }
 
+/**
+  * Initialize matrix; store whatever index it is at at that point
+  * Return pointer to the matrix
+  */
+int *initialize_matrix(int rows, int cols) {
+    int *matrix = (int*)malloc(sizeof(int)*rows*cols);
 
+    int i;
+    for (i = 0; i < rows * cols; i++) {
+        matrix[i] = i;
+    }
+    return matrix;
+}
 
 int main() {
 
@@ -339,6 +351,10 @@ int main() {
 
     glock_init->status = available;
     glock_init->prev = NULL;
+
+    // initialize arrays to be used in the critical section
+    global_matrix_A = initialize_matrix(ROW_SIZE, COL_SIZE);
+    global_matrix_B = initialize_matrix(ROW_SIZE, COL_SIZE);
 
     qnode_t *prev_glock = lock.glock;
     atomic_compare_exchange_weak(&(lock.glock), &prev_glock, glock_init);

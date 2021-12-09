@@ -3,7 +3,7 @@
  * Using test-and-set assembly instruction to create lock
  * 
  * Use this command to compile:
- * clang -o ts -lpthread mb3_ts.c mb3_ts.s
+ * clang -o ts -lpthread mb4_ts.c mb4_ts.s
  * Then to run:
  * ./ts
  * 
@@ -24,6 +24,9 @@
 #define MAX_CRIT_ITERS 1
 #define MAX_NON_CRIT_ITERS 1
 
+#define ROW_SIZE 20
+#define COL_SIZE 20
+
 #define ARRAY_SIZE 10000000
 volatile long x[ARRAY_SIZE];
 
@@ -32,6 +35,8 @@ extern void Unlock(volatile int *lock_var);
 
 volatile int LOCK;
 
+int *global_matrix_A;
+int *global_matrix_B;
 
 void initialize_array(volatile long *array) {
     int i;
@@ -76,13 +81,9 @@ void *operation(void *vargp) {
 
     // place an end timer here
     //x++;
-    int i;
-    for (i = 0; i< ARRAY_SIZE; i++) {
-        if(x[i] != i)
-            x[i] = i;
-        else
-            x[i] = 0;    
-    }    
+    // call matrix multiplication to be done on 20x20 global matrices
+    matrix_multiplication(global_matrix_A,global_matrix_B,ROW_SIZE,COL_SIZE,ROW_SIZE,COL_SIZE);
+
     /**** END OF CRITICAL SECTION *****/    
 
     Unlock(&LOCK);
@@ -92,6 +93,20 @@ void *operation(void *vargp) {
 
 }
 
+/**
+  * Initialize matrix; store whatever index it is at at that point
+  * Return pointer to the matrix
+  */
+int *initialize_matrix(int rows, int cols) {
+    int *matrix = (int*)malloc(sizeof(int)*rows*cols);
+
+    int i;
+    for (i = 0; i < rows * cols; i++) {
+        matrix[i] = i;
+    }
+    return matrix;
+}
+
 int main() {
     LOCK = 0;
     pthread_t threads[NUM_THREADS];
@@ -99,6 +114,10 @@ int main() {
 
     //init array
     initialize_array(x);
+
+    // initialize arrays to be used in the critical section
+    global_matrix_A = initialize_matrix(ROW_SIZE, COL_SIZE);
+    global_matrix_B = initialize_matrix(ROW_SIZE, COL_SIZE);
 
     long time_init = get_wall_clock_time_nanos();
 

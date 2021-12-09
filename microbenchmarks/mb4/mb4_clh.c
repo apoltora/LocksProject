@@ -4,7 +4,7 @@
  * Check out visual on how this lock works here: https://classes.engineering.wustl.edu/cse539/web/lectures/locks.pdf
  * 
  * Use this command to compile:
- * clang -lpthread -o clh mb3_clh.c
+ * clang -lpthread -o clh mb4_clh.c
  * Then to run:
  * ./clh
  * 
@@ -31,6 +31,9 @@
 
 #define ROW_SIZE 20
 #define COL_SIZE 20
+
+int *global_matrix_A;
+int *global_matrix_B;
 
 
 typedef enum { LOCKED, UNLOCKED } qlock_state;
@@ -151,16 +154,9 @@ void *operation(void *vargp) {
     /**** CRITICAL SECTION *****/
 
     // place an end timer here
-    int i;
-    for (i = 0; i< ARRAY_SIZE; i++) {
-        if(x[i] != i)
-            x[i] = i;
-        else
-            x[i] = 0;    
-    }    
 
-
-
+    // call matrix multiplication to be done on 20x20 global matrices
+    matrix_multiplication(global_matrix_A,global_matrix_B,ROW_SIZE,COL_SIZE,ROW_SIZE,COL_SIZE);
 
     /**** END OF CRITICAL SECTION *****/    
 
@@ -169,7 +165,19 @@ void *operation(void *vargp) {
     return vargp;
 }
 
+/**
+  * Initialize matrix; store whatever index it is at at that point
+  * Return pointer to the matrix
+  */
+int *initialize_matrix(int rows, int cols) {
+    int *matrix = (int*)malloc(sizeof(int)*rows*cols);
 
+    int i;
+    for (i = 0; i < rows * cols; i++) {
+        matrix[i] = i;
+    }
+    return matrix;
+}
 
 
 int main() {
@@ -185,7 +193,9 @@ int main() {
     qlock_t *prev_glock = glock;
     atomic_compare_exchange_weak(&glock, &prev_glock, glock_init);
 
-    //init array
+    // initialize arrays to be used in the critical section
+    global_matrix_A = initialize_matrix(ROW_SIZE, COL_SIZE);
+    global_matrix_B = initialize_matrix(ROW_SIZE, COL_SIZE);
     
 
     long time_init = get_wall_clock_time_nanos();
@@ -210,6 +220,8 @@ int main() {
 
     // free the final tail node of glock
     free(glock);
+    free(global_matrix_A);
+    free(global_matrix_B);
     return 0;
 
 }
