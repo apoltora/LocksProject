@@ -29,11 +29,11 @@
 
 // Timeout threshold // TODO: tune this value
 // critical section 0.0266 sec
-#define PATIENCE 532000000 //slightly more time than 10 critical sections
+#define PATIENCE 133000000 //slightly more time than 5 critical sections
 
 #define ARRAY_SIZE 10000000
 
-#define MAX_CS_TIME 26600000 // critical section 0.0266 sec
+#define MAX_CS_TIME 27000000 // critical section 0.0266 sec
 
 #define UPD_DELAY 100000 // 100 microsecs 
 
@@ -145,7 +145,7 @@ bool AcquireQLock(qnode_t *mlock)
         free(pred);
         //mlock->prev = pred;
         // lock acquired
-        lock.crit_sec_start_time = 0;
+        lock.crit_sec_start_time = get_wall_clock_time_nanos();;
         return true;
     }
     
@@ -159,7 +159,7 @@ bool AcquireQLock(qnode_t *mlock)
             free(pred);
             //mlock->prev = pred;
             // lock acquired
-            lock.crit_sec_start_time = 0;
+            lock.crit_sec_start_time = get_wall_clock_time_nanos();;
             return true;
         }
         if (stat == leaving) {
@@ -195,7 +195,7 @@ bool AcquireQLock(qnode_t *mlock)
             free(pred);
             //mlock->prev = pred;
             // lock acquired
-            lock.crit_sec_start_time = 0;
+            lock.crit_sec_start_time = get_wall_clock_time_nanos();;
             return true;
         }
 
@@ -281,10 +281,15 @@ void *operation(void *vargp) {
             break;
         else
         {
+            long temp = (lock.crit_sec_start_time + MAX_CS_TIME + UPD_DELAY);
+            long ret_time = get_wall_clock_time_nanos();
             // as the lock timed out, yield now and continue later
-            if(get_wall_clock_time_nanos() > (lock.crit_sec_start_time + MAX_CS_TIME + UPD_DELAY))
+            if(ret_time > temp)
             {
                 lock_holder_preemption_yield++;
+                //printf("The value of temp is : %ld\n", temp);
+                //printf("The value of ret_time is : %ld\n", ret_time);
+                //printf("The value of lock.crit_sec_start_time is : %ld\n", lock.crit_sec_start_time);
                 sched_yield();
             }
 
