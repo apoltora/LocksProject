@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define NUM_THREADS 64
+#define NUM_THREADS 32
 #define MAX_CRIT_ITERS 1
 #define MAX_NON_CRIT_ITERS 1
 

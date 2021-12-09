@@ -23,7 +23,7 @@
 #include <stdint.h>
 #include <stdatomic.h>
 
-#define NUM_THREADS 64
+#define NUM_THREADS 32
 #define CACHE_LINE_SIZE 64 
 
 #define MAX_CRIT_ITERS 1

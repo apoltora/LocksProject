@@ -24,12 +24,12 @@
 #include <stdatomic.h>
 #include <sched.h>
 
-#define NUM_THREADS 64
+#define NUM_THREADS 32
 #define CACHE_LINE_SIZE 64 
 
 // Timeout threshold // TODO: tune this value
 // critical section 0.0266 sec
-#define PATIENCE 532000000 //slightly more time than 20 critical sections
+#define PATIENCE 266000000 //slightly more time than 10 critical sections
 
 #define ARRAY_SIZE 10000000
 
@@ -283,7 +283,7 @@ void *operation(void *vargp) {
             break;
         else
         {
-            //num_timeouts++;
+           // num_timeouts++;
             long temp = (lock.crit_sec_start_time + MAX_CS_TIME + UPD_DELAY);
             long ret_time = get_wall_clock_time_nanos();
             // as the lock timed out, yield now and continue later
@@ -364,7 +364,7 @@ int main() {
 
     long time_diff = time_final - time_init;
     
-   // printf("The value of num_timeouts is : %d\n", num_timeouts);
+    printf("The value of num_timeouts is : %d\n", num_timeouts);
    // printf("The value of lock_holder_preemption_yield is : %d\n", lock_holder_preemption_yield);
     printf("Total RUNTIME : %lf\n\n", ((double) time_diff/1000000000));
     
