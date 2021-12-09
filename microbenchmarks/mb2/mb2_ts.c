@@ -3,7 +3,7 @@
  * Using test-and-set assembly instruction to create lock
  * 
  * Use this command to compile:
- * gcc -o ts -lpthread mb1_ts.c mb1_ts.s
+ * clang -o ts -lpthread mb2_ts.c mb2_ts.s
  * Then to run:
  * ./ts
  * 
@@ -20,70 +20,128 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define NUM_THREADS 8
-#define ARRAY_SIZE 10
+#define NUM_THREADS 32
+#define MAX_CRIT_ITERS 1
+#define MAX_NON_CRIT_ITERS 1
 
-extern void lock(volatile int *lock_var);
-extern void unlock(volatile int *lock_var);
+#define ARRAY_SIZE 10000000
+volatile long x[ARRAY_SIZE];
+
+extern void Lock(volatile int *lock_var);
+extern void Unlock(volatile int *lock_var);
 
 volatile int LOCK;
-volatile int x[ARRAY_SIZE];
 
-typedef struct {
-    int thread_id;
-    pthread_t thread;
-} thread_t;
 
-void initialize_array(volatile int *array) {
+void initialize_array(volatile long *array) {
     int i;
     for (i = 0; i < ARRAY_SIZE; i++) {
         array[i] = 0;
     }
 }
 
-void initialize_threads(thread_t *threads) {
-    int thread;
-    for (thread = 0; thread < NUM_THREADS; thread++) {
-        threads[thread].thread_id = thread;
-    }
-}
 
-void print_final_array(volatile int *array) {
-    int i;
-    for (i = 0; i < ARRAY_SIZE; i++) {
-        printf("Array index: %d, Thread id %d\n",i, array[i]);
-    }
+//function to return current wall clock time in nanosecs
+long get_wall_clock_time_nanos()
+{
+    struct timespec t0;
+    long time_in_nano_sec;
+
+   /* if(timespec_get(&t0, TIME_UTC) != TIME_UTC) {
+        printf("Error in calling timespec_get\n");
+        exit(EXIT_FAILURE);
+    }*/
+
+    timespec_get(&t0, TIME_UTC);  
+
+    time_in_nano_sec = (((long)t0.tv_sec * 1000000000L) + t0.tv_nsec);
+
+    return time_in_nano_sec; // time_in_nano_seconds
 }
 
 void *operation(void *vargp) {
-    thread_t thread = *(thread_t*)vargp;
-    int thread_id = thread.thread_id;
-    printf("I don't know why but infinite loop in lock for thread 0 if I don't have a print statement here\n");
-    // place a start timer here
-    lock(&LOCK);
-    // place an end timer here
-    int i;
-    for (i = 0; i< ARRAY_SIZE; i++) {
-        x[i] = thread_id;
-    }
-    unlock(&LOCK);
-    // place an end timer here
-}
+    /*
+    Lock(&LOCK);
+    x++;
+    // delay added here to spend some time in critical section
+    int delay = 100000;
+    while(delay)
+        delay--;
+    Unlock(&LOCK);*/
+    
+    int crit_sec_executed = 0;
+    int non_crit_sec_executed = 0;
+    
+    while(non_crit_sec_executed < MAX_NON_CRIT_ITERS || crit_sec_executed < MAX_CRIT_ITERS)
+    {
+    
+        if(crit_sec_executed < MAX_CRIT_ITERS)
+        {
+            Lock(&LOCK);
 
+            /**** CRITICAL SECTION *****/
+
+            // place an end timer here
+            //x++;
+            int i;
+            for (i = 0; i< ARRAY_SIZE; i++) {
+                if(x[i] != i)
+                    x[i] = i;
+                else
+                    x[i] = 0;    
+            }    
+            /**** END OF CRITICAL SECTION *****/    
+
+            crit_sec_executed++;
+            Unlock(&LOCK);
+        }
+
+
+        if(non_crit_sec_executed < MAX_NON_CRIT_ITERS)
+        {
+            /* Start of NON-CRITICAL SECTION */
+
+            // 1 times the delay of critical section //
+            long delay = 100000000;
+            while(delay)
+                delay--;
+
+            /* End of NON-CRITICAL SECTION */
+            non_crit_sec_executed++;
+
+        }
+
+    }
+
+    return vargp;
+
+}
 
 int main() {
     LOCK = 0;
-    initialize_array(x);
-    thread_t threads[NUM_THREADS];
-    initialize_threads(threads);
+    pthread_t threads[NUM_THREADS];
     int i, j;
 
+    //init array
+    initialize_array(x);
+
+    long time_init = get_wall_clock_time_nanos();
+
     for (i = 0; i < NUM_THREADS; i++) {
-        pthread_create(&threads[i].thread, NULL, operation, (void*)&threads[i]);    // make the threads run the operation function
+        pthread_create(&threads[i], NULL, operation, NULL);    // make the threads run the operation function
     }
     for (j = 0; j < NUM_THREADS; j++) {
-        pthread_join(threads[j].thread, NULL);                      // waits for all threads to be finished before function returns
+        pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
     }
+
+    long time_final= get_wall_clock_time_nanos();
+
+    long time_diff = time_final - time_init;
+    
+    //printf("The value of x is : %d\n", x);
+    printf("Total RUNTIME : %lf\n\n", ((double) time_diff/1000000000));
+
+   
     return 0;
 }
 
