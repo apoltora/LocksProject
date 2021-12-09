@@ -49,11 +49,28 @@ long get_wall_clock_time_nanos()
     return time_in_nano_sec; // time_in_nano_seconds
 }
 
+//function to return thread specific clock time in nanosecs
+long get_thread_time_nanos()
+{
+    struct timespec t0;
+    long time_in_nano_sec;
+
+    if(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &t0) == -1)
+    {
+        printf("Error in calling clock_gettime\n");
+        exit(EXIT_FAILURE);
+    }
+
+    time_in_nano_sec = (((long)t0.tv_sec * 1000000000L) + t0.tv_nsec);
+
+    return time_in_nano_sec; // time_in_nano_seconds
+
+}
 
 void *operation(void *vargp) {
  
 
-    long time_init = get_wall_clock_time_nanos();
+    long time_init = get_thread_time_nanos();
 
     //x++;
     /*long delay = 100000000;
@@ -69,7 +86,7 @@ void *operation(void *vargp) {
     }    
 
 
-    long time_final= get_wall_clock_time_nanos();
+    long time_final= get_thread_time_nanos();
 
     long time_diff = time_final - time_init;
 
