@@ -29,11 +29,11 @@
 
 // Timeout threshold // TODO: tune this value
 // critical section 0.0266 sec
-#define PATIENCE 133000000 //slightly more time than 5 critical sections
+#define PATIENCE 399000000 //slightly more time than 15 critical sections
 
 #define ARRAY_SIZE 10000000
 
-#define MAX_CS_TIME 27000000 // critical section 0.0266 sec
+#define MAX_CS_TIME 26600000 // critical section 0.0266 sec
 
 #define UPD_DELAY 100000 // 100 microsecs 
 
