@@ -24,12 +24,12 @@
 #include <stdatomic.h>
 #include <sched.h>
 
-#define NUM_THREADS 32
+#define NUM_THREADS 4
 #define CACHE_LINE_SIZE 64 
 
 // Timeout threshold // TODO: tune this value
 // critical section 0.0266 sec
-#define PATIENCE 106400000 //slightly more time than 4 critical sections
+#define PATIENCE 79800000 //slightly more time than 3 critical sections
 #define MAX_CRIT_ITERS 1
 #define MAX_NON_CRIT_ITERS 1
 
@@ -315,8 +315,8 @@ void *operation(void *vargp) {
         {
             /* Start of NON-CRITICAL SECTION */
 
-            // 1 times the delay of critical section //
-            long delay = 100000000;
+            // approx 1 times the delay of critical section //
+            long delay = 17500000;
             while(delay)
                 delay--;
 
