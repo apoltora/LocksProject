@@ -107,12 +107,12 @@ void *operation(void *vargp) {
     // place an end timer here
     //x++;
     // call matrix multiplication to be done on 20x20 global matrices
-    matrix_multiplication(global_matrix_A,global_matrix_B,ROW_SIZE,COL_SIZE,ROW_SIZE,COL_SIZE);
+    int *C = matrix_multiplication(global_matrix_A,global_matrix_B,ROW_SIZE,COL_SIZE,ROW_SIZE,COL_SIZE);
 
     /**** END OF CRITICAL SECTION *****/    
 
     Unlock(&LOCK);
-
+    free(C);
 
     return vargp;
 

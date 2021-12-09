@@ -522,7 +522,7 @@ void *operation(void *vargp) {
     /* Start of CRITICAL SECTION */
 
     // call matrix multiplication to be done on 20x20 global matrices
-    matrix_multiplication(global_matrix_A,global_matrix_B,ROW_SIZE,COL_SIZE,ROW_SIZE,COL_SIZE);
+    int *C = matrix_multiplication(global_matrix_A,global_matrix_B,ROW_SIZE,COL_SIZE,ROW_SIZE,COL_SIZE);
 
 
 
@@ -532,6 +532,7 @@ void *operation(void *vargp) {
 
     // free the mylock as the job is over here...
     free(mylock);
+    free(C);
 
 
     return vargp;

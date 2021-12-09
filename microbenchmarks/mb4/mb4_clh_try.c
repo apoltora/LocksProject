@@ -29,7 +29,7 @@
 
 // Timeout threshold // TODO: tune this value
 // critical section 0.0266 sec
-#define PATIENCE 266000000 //slightly more time than 10 critical sections
+#define PATIENCE 79800000//slightly more time than 10 critical sections
 
 #define MAX_CS_TIME 26600000 // critical section 0.0266 sec
 
@@ -336,13 +336,14 @@ void *operation(void *vargp) {
         delay--;*/
 
     // call matrix multiplication to be done on 20x20 global matrices
-    matrix_multiplication(global_matrix_A,global_matrix_B,ROW_SIZE,COL_SIZE,ROW_SIZE,COL_SIZE);
+    int *C = matrix_multiplication(global_matrix_A,global_matrix_B,ROW_SIZE,COL_SIZE,ROW_SIZE,COL_SIZE);
 
 
     /* End of CRITICAL SECTION */ 
 
     ReleaseQLock(mylock);
 
+    free(C);
 
     return vargp;
 }
