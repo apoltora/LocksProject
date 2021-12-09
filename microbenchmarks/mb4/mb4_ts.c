@@ -27,9 +27,6 @@
 #define ROW_SIZE 20
 #define COL_SIZE 20
 
-#define ARRAY_SIZE 10000000
-volatile long x[ARRAY_SIZE];
-
 extern void Lock(volatile int *lock_var);
 extern void Unlock(volatile int *lock_var);
 
@@ -38,13 +35,41 @@ volatile int LOCK;
 int *global_matrix_A;
 int *global_matrix_B;
 
-void initialize_array(volatile long *array) {
-    int i;
-    for (i = 0; i < ARRAY_SIZE; i++) {
-        array[i] = 0;
-    }
-}
+int *matrix_multiplication(int *A, int *B, int rows_A, int cols_A, int rows_B, int cols_B) {
+    
+    int length_A = rows_A * cols_A;
+    int length_B = rows_B * cols_B;
 
+    int *C = malloc(rows_A * cols_B * sizeof(int));
+    
+    // you cannot do matrix multiplication for matrices that are not the same size !!
+    if (length_A != length_B || cols_A != rows_B) {
+        return NULL;
+    }
+
+    int i,j,k;
+    int A_index, B_index, C_index;
+  
+    for (i = 0; i < rows_A; i++) {
+        for (j = 0; j < cols_B; j++) {
+            // i * cols_A + j
+            // we want row i col j for C
+            C_index = i * cols_B + j;
+
+            // C[i][j] = 0;
+            C[C_index] = 0;
+ 
+            for (k = 0; k < rows_B; k++) {
+                A_index = i * cols_A + k;
+                B_index = k * cols_B + j;
+                // C[i][j] += A[i][k] * B[k][j];
+                C[C_index] += A[A_index] * B[B_index];
+            }
+         }
+     }
+
+    return C;
+}
 
 //function to return current wall clock time in nanosecs
 long get_wall_clock_time_nanos()
@@ -111,9 +136,6 @@ int main() {
     LOCK = 0;
     pthread_t threads[NUM_THREADS];
     int i, j;
-
-    //init array
-    initialize_array(x);
 
     // initialize arrays to be used in the critical section
     global_matrix_A = initialize_matrix(ROW_SIZE, COL_SIZE);

@@ -31,8 +31,6 @@
 // critical section 0.0266 sec
 #define PATIENCE 266000000 //slightly more time than 10 critical sections
 
-#define ARRAY_SIZE 10000000
-
 #define MAX_CS_TIME 26600000 // critical section 0.0266 sec
 
 #define UPD_DELAY 100000 // 100 microsecs 
@@ -40,22 +38,12 @@
 #define ROW_SIZE 20
 #define COL_SIZE 20
 
-volatile long x[ARRAY_SIZE];
-
 volatile int lock_holder_preemption_yield = 0;
 
 volatile int num_timeouts = 0;
 
 int *global_matrix_A;
 int *global_matrix_B;
-
-void initialize_array(volatile long *array) {
-    int i;
-    for (i = 0; i < ARRAY_SIZE; i++) {
-        array[i] = 0;
-    }
-}
-
 
 typedef enum {waiting,      // lock is held
             available,    // lock is free
@@ -87,7 +75,41 @@ typedef struct qlock {
 
 qlock_t lock;
 
+int *matrix_multiplication(int *A, int *B, int rows_A, int cols_A, int rows_B, int cols_B) {
+    
+    int length_A = rows_A * cols_A;
+    int length_B = rows_B * cols_B;
 
+    int *C = malloc(rows_A * cols_B * sizeof(int));
+    
+    // you cannot do matrix multiplication for matrices that are not the same size !!
+    if (length_A != length_B || cols_A != rows_B) {
+        return NULL;
+    }
+
+    int i,j,k;
+    int A_index, B_index, C_index;
+  
+    for (i = 0; i < rows_A; i++) {
+        for (j = 0; j < cols_B; j++) {
+            // i * cols_A + j
+            // we want row i col j for C
+            C_index = i * cols_B + j;
+
+            // C[i][j] = 0;
+            C[C_index] = 0;
+ 
+            for (k = 0; k < rows_B; k++) {
+                A_index = i * cols_A + k;
+                B_index = k * cols_B + j;
+                // C[i][j] += A[i][k] * B[k][j];
+                C[C_index] += A[A_index] * B[B_index];
+            }
+         }
+     }
+
+    return C;
+}
 
 //function to return current wall clock time in nanosecs
 long get_wall_clock_time_nanos()
@@ -358,9 +380,6 @@ int main() {
 
     qnode_t *prev_glock = lock.glock;
     atomic_compare_exchange_weak(&(lock.glock), &prev_glock, glock_init);
-
-    //init array
-    initialize_array(x);
 
     // Create and spawn threads
     pthread_t threads[NUM_THREADS];
