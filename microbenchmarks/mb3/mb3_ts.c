@@ -1,6 +1,5 @@
 /**
- * This microbenchmark is a very simple add operation to a shared variable
- * Using test-and-set assembly instruction to create lock
+ * Microbenchmark 3 for ts
  * 
  * Use this command to compile:
  * clang -o ts -lpthread mb3_ts.c mb3_ts.s
@@ -47,11 +46,6 @@ long get_wall_clock_time_nanos()
     struct timespec t0;
     long time_in_nano_sec;
 
-   /* if(timespec_get(&t0, TIME_UTC) != TIME_UTC) {
-        printf("Error in calling timespec_get\n");
-        exit(EXIT_FAILURE);
-    }*/
-
     timespec_get(&t0, TIME_UTC);  
 
     time_in_nano_sec = (((long)t0.tv_sec * 1000000000L) + t0.tv_nsec);
@@ -60,22 +54,11 @@ long get_wall_clock_time_nanos()
 }
 
 void *operation(void *vargp) {
-    /*
-    Lock(&LOCK);
-    x++;
-    // delay added here to spend some time in critical section
-    int delay = 100000;
-    while(delay)
-        delay--;
-    Unlock(&LOCK);*/
- 
  
     Lock(&LOCK);
 
     /**** CRITICAL SECTION *****/
 
-    // place an end timer here
-    //x++;
     int i;
     for (i = 0; i< ARRAY_SIZE; i++) {
         if(x[i] != i)
@@ -83,10 +66,10 @@ void *operation(void *vargp) {
         else
             x[i] = 0;    
     }    
+    
     /**** END OF CRITICAL SECTION *****/    
 
     Unlock(&LOCK);
-
 
     return vargp;
 

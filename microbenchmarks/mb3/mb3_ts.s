@@ -1,5 +1,5 @@
 #
-# This is ARM assembly -- cannot be run by a Mac
+# 
 # 
 #
 

@@ -1,8 +1,5 @@
 /**
- * This microbenchmark is a very simple add operation to a shared variable
- * Creating clh_try queue lock
- * 
- * 
+ * Microbenchmark 3 for clh_try
  * Use this command to compile:
  * clang -lpthread -o clh_try mb3_clh_try.c
  * Then to run:
@@ -27,7 +24,7 @@
 #define NUM_THREADS 32
 #define CACHE_LINE_SIZE 64 
 
-// Timeout threshold // TODO: tune this value
+// Timeout threshold 
 // critical section 0.0266 sec
 #define PATIENCE 266000000 //slightly more time than 10 critical sections
 
@@ -68,8 +65,6 @@ typedef struct qnode {
 } qnode_t;
 
 
-//qlock_t* volatile _Atomic glock;
-
 // A structure to represent the global lock node
 typedef struct qlock {
 
@@ -90,11 +85,6 @@ long get_wall_clock_time_nanos()
 {
     struct timespec t0;
     long time_in_nano_sec;
-
-   /* if(timespec_get(&t0, TIME_UTC) != TIME_UTC) {
-        printf("Error in calling timespec_get\n");
-        exit(EXIT_FAILURE);
-    }*/
 
     timespec_get(&t0, TIME_UTC);  
 
@@ -303,11 +293,6 @@ void *operation(void *vargp) {
     }
     
     /**** CRITICAL SECTION *****/
-
-    //x++;
-    /*long delay = 100000000;
-    while(delay)
-        delay--;*/
 
     int i;
     for (i = 0; i< ARRAY_SIZE; i++) {

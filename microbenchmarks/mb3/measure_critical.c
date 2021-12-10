@@ -1,8 +1,5 @@
 /**
- * This microbenchmark is a very simple add operation to a shared variable
- * Creating clh queue lock
- * Check out visual on how this lock works here: https://classes.engineering.wustl.edu/cse539/web/lectures/locks.pdf
- * 
+ *
  * Use this command to compile:
  * clang -lpthread -o measure_critical measure_critical.c
  * Then to run:
@@ -29,18 +26,11 @@
 volatile long x[ARRAY_SIZE];
 
 
-//int x;
-
 //function to return current wall clock time in nanosecs
 long get_wall_clock_time_nanos()
 {
     struct timespec t0;
     long time_in_nano_sec;
-
-   /* if(timespec_get(&t0, TIME_UTC) != TIME_UTC) {
-        printf("Error in calling timespec_get\n");
-        exit(EXIT_FAILURE);
-    }*/
 
     timespec_get(&t0, TIME_UTC);  
 
@@ -73,11 +63,6 @@ void *operation(void *vargp) {
 
     long time_init = get_thread_time_nanos();
 
-    //x++;
-    /*long delay = 100000000;
-    while(delay)
-        delay--;*/
-
     int i;
     for (i = 0; i< ARRAY_SIZE; i++) {
         if(x[i] != i)
@@ -98,11 +83,6 @@ void *operation(void *vargp) {
 
 
 int main() {
-   // x = 0;
-
-
-
-    //long time_init = get_wall_clock_time_nanos();
 
     pthread_t threads[NUM_THREADS];
     int i, j;
@@ -115,15 +95,6 @@ int main() {
         pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
     }
 
-    //long time_final= get_wall_clock_time_nanos();
-
-    //long time_diff = time_final - time_init;
-    
-    //printf("The value of x is : %d\n", x);
-    //printf("Total RUNTIME : %lf\n\n", ((double) time_diff/1000000000));
-
-    // free the final tail node of glock
-    
     return 0;
 
 }

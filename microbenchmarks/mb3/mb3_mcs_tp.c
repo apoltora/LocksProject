@@ -1,5 +1,5 @@
 /**
- * This microbenchmark is a very simple add operation to a shared variable
+ * Microbenchmark 3
  * Creating MCS Time-Published lock (variant of MCS queue lock)
  * 
  * This lock has two additional states TIMED_OUT and REMOVED when compared to *original MCS Queue lock.
@@ -14,20 +14,6 @@
  *
  */
 
-
-/*
-
-TODO:
-
-check both the sched_yield() calls.....commented some hints wherever it is called in the code
-
-not sure whether premption is actually happening in both mcs_tp and mcs codes...should possibily change the code such that it increases cache misses in the critical section (also in non-critical section??)
-
-maybe comment out all the perf counters and check the true performance
-
-regarding correctness of perf counters: is atomic increment needed for perf counters ?
-
-*/
 
 
 #include <pthread.h>
@@ -70,6 +56,7 @@ regarding correctness of perf counters: is atomic increment needed for perf coun
 
 #define ARRAY_SIZE 10000000
 
+// profiled this value and used it to make the code more robust
 #define  TIME_TO_REMOVE_A_NODE 1260 //1260 ns
 
 // useful performance counters for observations...
@@ -91,9 +78,6 @@ volatile int lock_holder_progress_yield_count = 0;
 volatile int total_timeout_occurrences = 0;
 
 volatile int qnodes_rejoined_after_timeout_success = 0;*/
-
-
-
 
 
 typedef enum { AVAILABLE, WAITING, TIMED_OUT, REMOVED } qnode_state;
@@ -140,11 +124,6 @@ long get_wall_clock_time_nanos()
 {
     struct timespec t0;
     long time_in_nano_sec;
-
-   /* if(timespec_get(&t0, TIME_UTC) != TIME_UTC) {
-        printf("Error in calling timespec_get\n");
-        exit(EXIT_FAILURE);
-    }*/
 
     timespec_get(&t0, TIME_UTC);  
 
