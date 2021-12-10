@@ -54,6 +54,7 @@ long get_wall_clock_time_nanos()
     return time_in_nano_sec; // time_in_nano_seconds
 }
 
+<<<<<<< HEAD
 int *matrix_multiplication(int *A, int *B, int rows_A, int cols_A, int rows_B, int cols_B) {
     
     int length_A = rows_A * cols_A;
@@ -90,11 +91,32 @@ int *matrix_multiplication(int *A, int *B, int rows_A, int cols_A, int rows_B, i
     return C;
 }
 
+=======
+//function to return thread specific clock time in nanosecs
+long get_thread_time_nanos()
+{
+    struct timespec t0;
+    long time_in_nano_sec;
+
+    if(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &t0) == -1)
+    {
+        printf("Error in calling clock_gettime\n");
+        exit(EXIT_FAILURE);
+    }
+
+    time_in_nano_sec = (((long)t0.tv_sec * 1000000000L) + t0.tv_nsec);
+
+    return time_in_nano_sec; // time_in_nano_seconds
+
+}
+
+
+>>>>>>> 055db6575ec73691edb299f6727123bb02c2fc78
 
 void *operation(void *vargp) {
  
 
-    long time_init = get_wall_clock_time_nanos();
+    long time_init = get_thread_time_nanos();
 
     //x++;
     /*long delay = 100000000;
@@ -105,7 +127,7 @@ void *operation(void *vargp) {
 
 
 
-    long time_final= get_wall_clock_time_nanos();
+    long time_final= get_thread_time_nanos();
 
     long time_diff = time_final - time_init;
 

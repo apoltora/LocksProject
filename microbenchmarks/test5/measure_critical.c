@@ -67,25 +67,17 @@ long get_thread_time_nanos()
 
 }
 
+
 void *operation(void *vargp) {
  
 
     long time_init = get_thread_time_nanos();
 
-    //x++;
-    /*long delay = 100000000;
+    long delay = 100000000;
     while(delay)
-        delay--;*/
+        delay--;
 
-    int i;
-    for (i = 0; i< ARRAY_SIZE; i++) {
-        if(x[i] != i)
-            x[i] = i;
-        else
-            x[i] = 0;    
-    }    
-
-
+ 
     long time_final= get_thread_time_nanos();
 
     long time_diff = time_final - time_init;
