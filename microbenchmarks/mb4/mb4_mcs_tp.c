@@ -52,12 +52,12 @@ regarding correctness of perf counters: is atomic increment needed for perf coun
 // How long should a thread keep spinning while waiting in the queue ? 
 // Also known as PATIENCE INTERVAL...
 // After this timeout has reached the thread can perform a yield or execute an alternate execution path... In our code we perform yield...
-#define PATIENCE 133000000//266000000 //slightly more time than 10 critical sections
+#define PATIENCE 3090000////slightly more time than 10 critical sections
 
 // maximum time taken to execute the critical section...lock holder is preempted if it is holding the lock more than this time
 // yield now to help the lock holder to get rescheduled
 // measure the time of critical section and then use that time here
-#define MAX_CS_TIME 26600000 //  0.0266 sec
+#define MAX_CS_TIME 309000 //  0.0266 sec
 
 
 // Lock Holder checks this value while handing the lock to other thread
