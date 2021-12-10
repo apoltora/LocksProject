@@ -1,11 +1,10 @@
 /**
- * This microbenchmark is a very simple add operation to a shared variable
- * Creating queue lock
- * 
+ * MCS Queue lock implementation
+ *  
  * Use this command to compile:
- * clang -std=c11 -lpthread -o queue mb1_queue.c
+ * clang -std=c11 -lpthread -o mcs mcs.c
  * Then to run:
- * ./queue
+ * ./mcs
  * 
  * Authors: Alexandra Poltorak, Kiran Kumar Rajan Babu
  * Contact: apoltora@andrew.cmu.edu, krajanba@andrew.cmu.edu
@@ -112,11 +111,10 @@ void *operation(void *vargp) {
     mylock = AcquireQLock();
 
     // place an end timer here
-    x++;
 
-   // long delay = 1000000000;
-    //while(delay)
-      //  delay--;
+    long delay = 1000000000;
+    while(delay)
+        delay--;
 
     ReleaseQLock(mylock);
 

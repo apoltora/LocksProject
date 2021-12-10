@@ -1,7 +1,5 @@
 /**
- * This microbenchmark is a very simple add operation to a shared variable
- * Creating clh queue lock
- * Check out visual on how this lock works here: https://classes.engineering.wustl.edu/cse539/web/lectures/locks.pdf
+ * Code to measure critical section time
  * 
  * Use this command to compile:
  * clang -lpthread -o measure_critical measure_critical.c
