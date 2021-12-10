@@ -1,7 +1,5 @@
 /**
- * This microbenchmark is a very simple add operation to a shared variable
- * Creating clh_try queue lock
- * 
+ * Microbenchmark 2 for clh_try
  * 
  * Use this command to compile:
  * clang -lpthread -o clh_try mb2_clh_try.c
@@ -61,9 +59,6 @@ typedef struct qlock {
 } qlock_t;
 
 
-// typedef volatile clh_qnode *clh_qnode_ptr;
-// typedef clh_qnode_ptr clh_try_lock;
-
 qlock_t* volatile _Atomic glock;
 
 
@@ -74,11 +69,6 @@ long get_wall_clock_time_nanos()
 {
     struct timespec t0;
     long time_in_nano_sec;
-
-   /* if(timespec_get(&t0, TIME_UTC) != TIME_UTC) {
-        printf("Error in calling timespec_get\n");
-        exit(EXIT_FAILURE);
-    }*/
 
     timespec_get(&t0, TIME_UTC);  
 
@@ -259,22 +249,6 @@ void *operation(void *vargp) {
     int non_crit_sec_executed = 0;
 
    
-   /* while(1)
-    {
-        acquire_status = AcquireQLock(mylock);
-
-        if(acquire_status) // lock acquire success
-            break;
-        else
-        {
-            // as the lock timed out, yield now and continue later
-            sched_yield();
-
-          //? maybe we should wait for sometime here before a retry ?
-        }
-
-
-    }*/
     while(non_crit_sec_executed < MAX_NON_CRIT_ITERS || crit_sec_executed < MAX_CRIT_ITERS)
     {
         if(crit_sec_executed < MAX_CRIT_ITERS)
@@ -288,12 +262,6 @@ void *operation(void *vargp) {
 
 
             /**** CRITICAL SECTION *****/
-
-            // place an end timer here
-            //x++;
-            /*long delay = 100000000;
-            while(delay)
-                delay--;*/
 
             int i;
             for (i = 0; i< ARRAY_SIZE; i++) {
