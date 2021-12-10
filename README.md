@@ -19,3 +19,6 @@ Description:
         mb1, mb2, mb3, mb4: codes for various microbenchmarks from 1 to 4 respectively
         test1, test5: test1 and test5 contains the codes used for test 1 and test 5 respectively
         pre_checkpoint: this folder contains all the files coded before checkpoint. But these codes WERE NOT used for our final analysis and final report.
+
+
+    The timing_codes contain some test codes for checking the high resolution timers
