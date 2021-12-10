@@ -1,7 +1,4 @@
 /**
- * This microbenchmark is a very simple add operation to a shared variable
- * Creating clh queue lock
- * Check out visual on how this lock works here: https://classes.engineering.wustl.edu/cse539/web/lectures/locks.pdf
  * 
  * Use this command to compile:
  * clang -lpthread -o measure_critical measure_critical.c
@@ -34,7 +31,6 @@ volatile long x[ARRAY_SIZE];
 int *global_matrix_A;
 int *global_matrix_B;
 
-//int x;
 
 //function to return current wall clock time in nanosecs
 long get_wall_clock_time_nanos()
@@ -54,7 +50,6 @@ long get_wall_clock_time_nanos()
     return time_in_nano_sec; // time_in_nano_seconds
 }
 
-<<<<<<< HEAD
 int *matrix_multiplication(int *A, int *B, int rows_A, int cols_A, int rows_B, int cols_B) {
     
     int length_A = rows_A * cols_A;
@@ -91,7 +86,6 @@ int *matrix_multiplication(int *A, int *B, int rows_A, int cols_A, int rows_B, i
     return C;
 }
 
-=======
 //function to return thread specific clock time in nanosecs
 long get_thread_time_nanos()
 {
@@ -111,20 +105,12 @@ long get_thread_time_nanos()
 }
 
 
->>>>>>> 055db6575ec73691edb299f6727123bb02c2fc78
 
 void *operation(void *vargp) {
- 
 
     long time_init = get_thread_time_nanos();
 
-    //x++;
-    /*long delay = 100000000;
-    while(delay)
-        delay--;*/
-
     int *C = matrix_multiplication(global_matrix_A,global_matrix_B,ROW_SIZE,COL_SIZE,ROW_SIZE,COL_SIZE);
-
 
 
     long time_final= get_thread_time_nanos();
@@ -153,14 +139,10 @@ int *initialize_matrix(int rows, int cols) {
 }
 
 int main() {
-   // x = 0;
-
 
     // initialize arrays to be used in the critical section
     global_matrix_A = initialize_matrix(ROW_SIZE, COL_SIZE);
     global_matrix_B = initialize_matrix(ROW_SIZE, COL_SIZE);
-
-    //long time_init = get_wall_clock_time_nanos();
 
     pthread_t threads[NUM_THREADS];
     int i, j;
@@ -173,14 +155,6 @@ int main() {
         pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
     }
 
-    //long time_final= get_wall_clock_time_nanos();
-
-    //long time_diff = time_final - time_init;
-    
-    //printf("The value of x is : %d\n", x);
-    //printf("Total RUNTIME : %lf\n\n", ((double) time_diff/1000000000));
-
-    // free the final tail node of glock
     
     return 0;
 

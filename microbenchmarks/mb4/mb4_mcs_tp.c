@@ -1,6 +1,5 @@
 /**
- * This microbenchmark is a very simple add operation to a shared variable
- * Creating MCS Time-Published lock (variant of MCS queue lock)
+ * MB4 for MCS_TP lock
  * 
  * This lock has two additional states TIMED_OUT and REMOVED when compared to *original MCS Queue lock.
  * 
@@ -13,21 +12,6 @@
  * Contact: apoltora@andrew.cmu.edu, krajanba@andrew.cmu.edu
  *
  */
-
-
-/*
-
-TODO:
-
-check both the sched_yield() calls.....commented some hints wherever it is called in the code
-
-not sure whether premption is actually happening in both mcs_tp and mcs codes...should possibily change the code such that it increases cache misses in the critical section (also in non-critical section??)
-
-maybe comment out all the perf counters and check the true performance
-
-regarding correctness of perf counters: is atomic increment needed for perf counters ?
-
-*/
 
 
 #include <pthread.h>
@@ -94,11 +78,7 @@ volatile int total_timeout_occurrences = 0;
 volatile int qnodes_rejoined_after_timeout_success = 0;*/
 
 
-
-
-
 typedef enum { AVAILABLE, WAITING, TIMED_OUT, REMOVED } qnode_state;
-
 
 // A structure to represent a particular queue node in the queue lock
 typedef struct q_node {

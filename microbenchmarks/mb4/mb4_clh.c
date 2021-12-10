@@ -1,8 +1,5 @@
 /**
- * This microbenchmark is a very simple add operation to a shared variable
- * Creating clh queue lock
- * Check out visual on how this lock works here: https://classes.engineering.wustl.edu/cse539/web/lectures/locks.pdf
- * 
+ * MB4 for clh
  * Use this command to compile:
  * clang -lpthread -o clh mb4_clh.c
  * Then to run:
@@ -93,11 +90,6 @@ long get_wall_clock_time_nanos()
     struct timespec t0;
     long time_in_nano_sec;
 
-   /* if(timespec_get(&t0, TIME_UTC) != TIME_UTC) {
-        printf("Error in calling timespec_get\n");
-        exit(EXIT_FAILURE);
-    }*/
-
     timespec_get(&t0, TIME_UTC);  
 
     time_in_nano_sec = (((long)t0.tv_sec * 1000000000L) + t0.tv_nsec);
@@ -127,8 +119,6 @@ qlock_t *AcquireQLock() {
     mlock->prev = prev_glock;
 
     while (mlock->prev->state == LOCKED); // SPIN HERE...
-
-    // printf("I am here...\n");
 
     // free the previous node here as it wont be used anymore.
     free(prev_glock);
