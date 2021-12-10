@@ -1,6 +1,5 @@
 /**
- * This microbenchmark is a very simple add operation to a shared variable
- * Using test-and-set assembly instruction to create lock
+ *  Test and set Code for Test 1
  * 
  * Use this command to compile:
  * clang -o ts -lpthread mb3_ts.c mb3_ts.s

@@ -1,7 +1,5 @@
 /**
- * This microbenchmark is a very simple add operation to a shared variable
- * Creating clh_try queue lock
- * 
+ *  CLH_TRY Code for Test 1
  * 
  * Use this command to compile:
  * clang -lpthread -o clh_try mb3_clh_try.c
@@ -27,7 +25,7 @@
 #define NUM_THREADS 1
 #define CACHE_LINE_SIZE 64 
 
-// Timeout threshold // TODO: tune this value
+// Timeout threshold 
 // critical section 0.0266 sec
 #define PATIENCE 1000 //slightly more time than 10 critical sections
 
@@ -290,9 +288,6 @@ void *operation(void *vargp) {
             if(ret_time > temp)
             {
                 //lock_holder_preemption_yield++;
-                //printf("The value of temp is : %ld\n", temp);
-                //printf("The value of ret_time is : %ld\n", ret_time);
-                //printf("The value of lock.crit_sec_start_time is : %ld\n", lock.crit_sec_start_time);
                 sched_yield();
             }
 
@@ -304,18 +299,6 @@ void *operation(void *vargp) {
     
     /**** CRITICAL SECTION *****/
 
-    //x++;
-    /*long delay = 100000000;
-    while(delay)
-        delay--;*/
-
-   /* int i;
-    for (i = 0; i< ARRAY_SIZE; i++) {
-        if(x[i] != i)
-            x[i] = i;
-        else
-            x[i] = 0;    
-    }  */  
 
     /* End of CRITICAL SECTION */ 
 
@@ -351,14 +334,6 @@ int main() {
     int i, j;
 
     long time_init = get_wall_clock_time_nanos();
-
-  /*  for (i = 0; i < NUM_THREADS; i++) {
-        pthread_create(&threads[i], NULL, operation, NULL);    // make the threads run the operation function
-    }
-
-    for (j = 0; j < NUM_THREADS; j++) {
-        pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
-    }*/
 
     operation(NULL);
 

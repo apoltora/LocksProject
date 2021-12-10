@@ -1,6 +1,5 @@
 /**
- * This microbenchmark is a very simple add operation to a shared variable
- * Creating MCS Time-Published lock (variant of MCS queue lock)
+ * MCS Code for Test 1
  * 
  * This lock has two additional states TIMED_OUT and REMOVED when compared to *original MCS Queue lock.
  * 
@@ -14,20 +13,6 @@
  *
  */
 
-
-/*
-
-TODO:
-
-check both the sched_yield() calls.....commented some hints wherever it is called in the code
-
-not sure whether premption is actually happening in both mcs_tp and mcs codes...should possibily change the code such that it increases cache misses in the critical section (also in non-critical section??)
-
-maybe comment out all the perf counters and check the true performance
-
-regarding correctness of perf counters: is atomic increment needed for perf counters ?
-
-*/
 
 
 #include <pthread.h>
@@ -140,11 +125,6 @@ long get_wall_clock_time_nanos()
 {
     struct timespec t0;
     long time_in_nano_sec;
-
-   /* if(timespec_get(&t0, TIME_UTC) != TIME_UTC) {
-        printf("Error in calling timespec_get\n");
-        exit(EXIT_FAILURE);
-    }*/
 
     timespec_get(&t0, TIME_UTC);  
 
@@ -520,13 +500,6 @@ int main() {
 
     long time_init = get_wall_clock_time_nanos();
 
-    /*for (i = 0; i < NUM_THREADS; i++) {
-        pthread_create(&threads[i], NULL, operation, NULL);    // make the threads run the operation function
-    }
-
-    for (j = 0; j < NUM_THREADS; j++) {
-        pthread_join(threads[j], NULL);                      // waits for all threads to be finished before function returns
-    }*/
     operation(NULL);
 
     long time_final= get_wall_clock_time_nanos();
